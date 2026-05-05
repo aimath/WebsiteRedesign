@@ -46,7 +46,7 @@
         </td>
         <td>
           {% if ws.timesheet and ws.timesheet.status == "SUBMITTED" %}
-            <a href="{% url 'timeeffort:download_weekly_pdf' ws.timesheet.id %}" class="btn btn-sm btn-outline-success">Download PDF</a>
+            <a href="{% url 'timeeffort:weekly_print' ws.timesheet.id %}" class="btn btn-sm btn-outline-success" target="_blank">Print / PDF</a>
           {% else %}
             <a href="{% url 'timeeffort:weekly_entry' ws.week.id %}" class="btn btn-sm btn-outline-primary">
               {% if ws.timesheet %}Continue{% else %}Start{% endif %}
@@ -69,10 +69,10 @@
         <button class="btn btn-secondary" disabled>Generate Final Report</button>
       {% elif report and report.generated_at %}
         <p class="text-success mb-2">✓ Final report generated on {{ report.generated_at|date:"F j, Y" }}.</p>
-        {% if latest_pdf %}
-          <a href="{% url 'timeeffort:download_final_pdf' report.id %}" class="btn btn-success me-2">Download PDF (v{{ latest_pdf.version }})</a>
-        {% endif %}
-        <a href="{% url 'timeeffort:final_report_describe' period.id %}" class="btn btn-outline-secondary btn-sm">Regenerate</a>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'timeeffort:final_report_print' report.id %}" class="btn btn-success" target="_blank">Print / Save as PDF</a>
+          <a href="{% url 'timeeffort:final_report_describe' period.id %}" class="btn btn-outline-secondary btn-sm">Regenerate</a>
+        </div>
       {% else %}
         <p class="text-muted mb-2">All weeks submitted. Review and add activity descriptions, then generate your PDF.</p>
         <a href="{% url 'timeeffort:final_report_describe' period.id %}" class="btn btn-primary">Generate Final Report →</a>
