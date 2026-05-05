@@ -1734,3 +1734,45 @@ def _defaults_to_form_data(profile, holiday_pct):
         return data
     except DirectorDefaultAllocation.DoesNotExist:
         return {}
+
+
+# =============================================================================
+# CFO / ADMIN — ALL REPORTS PORTAL
+# =============================================================================
+
+
+@login_required
+def all_reports(request):
+    if not request.user.is_staff:
+        raise Http404
+
+    available_years, selected_year = _get_year_filter(request)
+    staff_type_filter = request.GET.get("staff_type", "")
+
+    reports = (
+        PeriodReport.objects.filter(
+            status__in=[
+                PeriodReport.Status.SUBMITTED,
+                PeriodReport.Status.SUPERVISOR_APPROVED,
+                PeriodReport.Status.PROCESSED,
+            ],
+            period__start_date__year=selected_year,
+        )
+        .select_related("staff__user", "period")
+        .order_by("employee_name_snapshot", "-period__start_date")
+    )
+
+    if staff_type_filter:
+        reports = reports.filter(staff__staff_type=staff_type_filter)
+
+    return render(
+        request,
+        "timeeffort/all_reports.html",
+        {
+            "reports": reports,
+            "available_years": available_years,
+            "selected_year": selected_year,
+            "staff_type_filter": staff_type_filter,
+            "staff_type_choices": StaffTimesheetProfile.StaffType.choices,
+        },
+    )

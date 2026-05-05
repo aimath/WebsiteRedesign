@@ -18,4 +18,6 @@ urlpatterns = [
     path("director/defaults/", views.director_set_defaults, name="director_set_defaults"),
     path("director/period/<int:period_id>/", views.director_period_entry, name="director_period_entry"),
     path("download/director/<int:submission_id>/", views.download_director_pdf, name="download_director_pdf"),
+    # CFO / admin portal
+    path("reports/all/", views.all_reports, name="all_reports"),
 ]
