@@ -47,7 +47,7 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
             <a class="nav-link dropdown-toggle"
                href="{{ collaborative_url }}"
                aria-haspopup="true"
-               aria-expanded="false">Research Programs</a>
+               aria-expanded="false">Research programs</a>
             <ul class="dropdown-menu">
               <li>
                 <a class="dropdown-item" href="/workshops/">Workshops</a>
@@ -75,7 +75,7 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
                 <h6 class="dropdown-header">Past Programs</h6>
               </li>
               <li>
-                <a class="dropdown-item ps-4" href="/frg/">FRG</a>
+                <a class="dropdown-item ps-4" href="/frg/">FRG: Averages of L-functions and Arithmetic Stratification</a>
               </li>
               <li>
                 <a class="dropdown-item ps-4"
@@ -83,7 +83,7 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
               </li>
               <li>
                 <a class="dropdown-item ps-4"
-                   href="{{ collaborative_url }}past-programs/">5 Year Fellow</a>
+                   href="{{ collaborative_url }}past-programs/">5-Year Fellows</a>
               </li>
             </ul>
           </li>
@@ -94,7 +94,7 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
             <a class="nav-link dropdown-toggle"
                href="{{ joyful_url }}"
                aria-haspopup="true"
-               aria-expanded="false">Joyful Math</a>
+               aria-expanded="false">Joyful math</a>
             <ul class="dropdown-menu">
               <li>
                 <a class="dropdown-item" href="{{ joyful_url }}math-circles/">Math Circle Network</a>
@@ -167,16 +167,16 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
             <a class="nav-link dropdown-toggle"
                href="{{ visiting_url }}"
                aria-haspopup="true"
-               aria-expanded="false">Your Visit</a>
+               aria-expanded="false">Your visit</a>
             <ul class="dropdown-menu">
               <li>
-                <a class="dropdown-item" href="{{ visiting_url }}local-information/">Map &amp; Directions</a>
+                <a href="{{ visiting_url }}map-directions/" class="dropdown-item">Map &amp; Directions</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ visiting_url }}local-information/">Local Information</a>
               </li>
               <li>
                 <a class="dropdown-item" href="{{ visiting_url }}facilities/">The AIM Facility in Pasadena</a>
-              </li>
-              <li>
-                <a class="dropdown-item" href="{{ visiting_url }}accessibility/">Access to the Facility</a>
               </li>
               <li>
                 <a class="dropdown-item" href="{{ visiting_url }}code-of-conduct/">Code of Conduct</a>
@@ -201,6 +201,9 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
                aria-haspopup="true"
                aria-expanded="false">News</a>
             <ul class="dropdown-menu">
+              <li>
+                <a href="" class="drowndown-item">Upcoming events</a>
+              </li>
               <li>
                 <a class="dropdown-item" href="{{ news_url }}">In the Media</a>
               </li>
@@ -230,13 +233,19 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
               <li>
                 <a class="dropdown-item" href="/contact/">Contact</a>
               </li>
+              <li>
+                <a href="/about/nsf/" class="dropdown-item">NSF</a>
+              </li>
+              <li>
+                <a href="/about/funding/" class="dropdown-item">How is AIM funded?</a>
+              </li>
             </ul>
           </li>
         {% endif %}
         {# Support AIM #}
-        <li class="nav-item">
+        {% comment %} <li class="nav-item">
           <a class="nav-link" href="/donate/">Support AIM</a>
-        </li>
+        </li> {% endcomment %}
       </ul>
     </div>
   </div>
