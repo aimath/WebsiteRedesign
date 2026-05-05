@@ -81,7 +81,7 @@ class Program(models.Model):
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     description = models.TextField(blank=True, null=True)
-    workshop_email_description = models.CharField(max_length=300, blank=True, null=True)
+    workshop_email_description = models.TextField(blank=True, null=True)
     online = models.BooleanField(default=True, blank=True, null=True)
     application_mode = models.CharField(
         max_length=10,
