@@ -171,24 +171,21 @@
                 </td>
                 <td>{{ form.desc_vacation }}</td>
               </tr>
-              {% if holiday_pct %}
-                <tr class="table-light">
-                  <td>
-                    Employer Holiday
-                    <span class="text-muted small">(auto — {{ holiday_count }} day{{ holiday_count|pluralize }})</span>
-                  </td>
-                  <td>
-                    <div class="input-group input-group-sm">
-                      <input type="text"
-                             class="form-control form-control-sm text-end"
-                             value="{{ holiday_pct }}"
-                             disabled>
-                      <span class="input-group-text">%</span>
-                    </div>
-                  </td>
-                  <td></td>
-                </tr>
-              {% endif %}
+              <tr>
+                <td>
+                  Employer Holiday
+                  {% if holiday_count %}
+                    <span class="text-muted small">({{ holiday_count }} day{{ holiday_count|pluralize }})</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="input-group input-group-sm">
+                    {{ form.pct_holiday }}
+                    <span class="input-group-text">%</span>
+                  </div>
+                </td>
+                <td>{{ form.desc_holiday }}</td>
+              </tr>
               <tr>
                 <td>Fundraising / PR</td>
                 <td>
@@ -234,12 +231,11 @@
   </div>
   <script>
 (() => {
-  const HOLIDAY_PCT = parseFloat("{{ holiday_pct }}") || 0;
   const parsePct = val => { const n = parseFloat(val); return isNaN(n) ? 0 : Math.max(0, n); };
 
   function updateTotals() {
     let directTotal = 0;
-    let indirectTotal = HOLIDAY_PCT;
+    let indirectTotal = 0;
 
     document.querySelectorAll(".pct-input").forEach(inp => {
       const name = inp.name || "";

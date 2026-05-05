@@ -70,8 +70,8 @@
             {% if summary.report and summary.report.status != "DRAFT" %}Edit / View{% else %}Enter Report{% endif %}
           </a>
           {% if summary.report and summary.report.status != "DRAFT" %}
-            <a href="{% url 'timeeffort:download_director_pdf' summary.report.id %}"
-               class="btn btn-sm btn-outline-success">Download PDF ↓</a>
+            <a href="{% url 'timeeffort:final_report_print' summary.report.id %}"
+               class="btn btn-sm btn-outline-success" target="_blank">Print / PDF ↓</a>
           {% endif %}
         </div>
       </div>
@@ -89,7 +89,7 @@
         <tr>
           <td>{{ rpt.period.salary_month_label }}</td>
           <td>{{ rpt.get_status_display }}</td>
-          <td><a href="{% url 'timeeffort:download_director_pdf' rpt.id %}" class="btn btn-sm btn-outline-secondary">Download PDF</a></td>
+          <td><a href="{% url 'timeeffort:final_report_print' rpt.id %}" class="btn btn-sm btn-outline-secondary" target="_blank">Print / PDF</a></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -154,9 +154,13 @@
         <div class="d-flex gap-2 flex-wrap">
           {% for ws in summary.week_statuses %}
             {% if ws.timesheet and ws.timesheet.status == "SUBMITTED" %}
-              <a href="{% url 'timeeffort:download_weekly_pdf' ws.timesheet.id %}"
-                 class="btn btn-sm btn-outline-success">
-                Wk {{ ws.week.week_number }} PDF ↓
+              <a href="{% url 'timeeffort:weekly_entry' ws.week.id %}"
+                 class="btn btn-sm btn-outline-secondary">
+                Wk {{ ws.week.week_number }} Edit
+              </a>
+              <a href="{% url 'timeeffort:weekly_print' ws.timesheet.id %}"
+                 class="btn btn-sm btn-outline-success" target="_blank">
+                Wk {{ ws.week.week_number }} Print ↓
               </a>
             {% else %}
               <a href="{% url 'timeeffort:weekly_entry' ws.week.id %}"
@@ -197,7 +201,7 @@
         <tr>
           <td>{{ rpt.period.salary_month_label }}</td>
           <td>{{ rpt.get_status_display }}</td>
-          <td><a href="{% url 'timeeffort:download_final_pdf' rpt.id %}" class="btn btn-sm btn-outline-secondary">Download PDF</a></td>
+          <td><a href="{% url 'timeeffort:final_report_print' rpt.id %}" class="btn btn-sm btn-outline-secondary" target="_blank">Print / PDF</a></td>
         </tr>
         {% endfor %}
       </tbody>

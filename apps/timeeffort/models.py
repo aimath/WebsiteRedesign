@@ -739,9 +739,13 @@ class PeriodReport(models.Model):
         """QuerySet of ReportingPeriod objects this report covers (1 for hourly, 2 for salary/director)."""
         if self.staff.is_hourly:
             return ReportingPeriod.objects.filter(pk=self.period_id)
+        # Always anchor to the even period_index (same logic as _get_salary_periods in views).
+        anchor_idx = self.period.period_index
+        if anchor_idx % 2 != 0:
+            anchor_idx -= 1
         return ReportingPeriod.objects.filter(
             calendar=self.period.calendar,
-            period_index__in=[self.period.period_index, self.period.period_index + 1],
+            period_index__in=[anchor_idx, anchor_idx + 1],
         )
 
     @property
@@ -917,6 +921,7 @@ class PDFSnapshot(models.Model):
 
     class Meta:
         ordering = ["-generated_at"]
+        get_latest_by = "version"
         verbose_name = "PDF Snapshot"
         verbose_name_plural = "PDF Snapshots"
 

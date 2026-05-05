@@ -217,6 +217,8 @@ class DirectorPeriodEntryForm(forms.Form):
     desc_sick_personal = _desc()
     pct_vacation = _pct()
     desc_vacation = _desc()
+    pct_holiday = _pct()
+    desc_holiday = _desc()
     pct_fundraising_pr = _pct()
     desc_fundraising_pr = _desc()
     pct_other_unallowable = _pct()
@@ -224,7 +226,8 @@ class DirectorPeriodEntryForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
-        total = self.holiday_pct
+        holiday_submitted = cleaned.get("pct_holiday") or Decimal("0")
+        total = holiday_submitted
         total += cleaned.get("main_grant_pct") or Decimal("0")
         for i in range(1, 5):
             total += cleaned.get(f"extra_grant_pct_{i}") or Decimal("0")
@@ -233,7 +236,7 @@ class DirectorPeriodEntryForm(forms.Form):
             total += cleaned.get(field) or Decimal("0")
 
         if abs(total - Decimal("100")) > Decimal("0.5"):
-            holiday_note = f" (includes {self.holiday_pct:.0f}% employer holiday)" if self.holiday_pct else ""
+            holiday_note = f" (includes {holiday_submitted:.0f}% employer holiday)" if holiday_submitted else ""
             raise forms.ValidationError(
                 f"Percentages must sum to 100%. Current total: {total:.2f}%{holiday_note}."
             )

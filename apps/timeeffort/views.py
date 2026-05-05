@@ -1058,6 +1058,34 @@ def final_report_describe(request, period_id):
 
 
 @login_required
+def weekly_print(request, timesheet_id):
+    profile = _get_staff_profile(request)
+    if not profile:
+        raise Http404
+
+    timesheet = get_object_or_404(WeeklyTimesheet, pk=timesheet_id, staff=profile)
+    lines = (
+        timesheet.lines.select_related("activity")
+        .order_by("activity__sort_order", "activity__name")
+        .all()
+    )
+    return render(
+        request,
+        "timeeffort/weekly_report_print.html",
+        {
+            "timesheet": timesheet,
+            "staff": timesheet.staff,
+            "week": timesheet.week,
+            "period": timesheet.week.period,
+            "lines": lines,
+            "total_hours": timesheet.total_hours,
+            "day_labels": SALARY_DAY_LABELS,
+            "generated_at": timezone.now(),
+        },
+    )
+
+
+@login_required
 def download_weekly_pdf(request, timesheet_id):
     profile = _get_staff_profile(request)
     if not profile:
@@ -1080,6 +1108,73 @@ def download_weekly_pdf(request, timesheet_id):
         snapshot = generate_weekly_pdf(timesheet, generated_by=request.user)
 
     return _serve_pdf(snapshot, f"weekly_report_{timesheet.week.start_date}.pdf")
+
+
+@login_required
+def final_report_print(request, report_id):
+    profile = _get_staff_profile(request)
+    if not profile:
+        raise Http404
+
+    report = get_object_or_404(PeriodReport, pk=report_id, staff=profile)
+
+    if not report.lines.exists():
+        messages.error(request, "Generate the final report first before printing.")
+        return redirect("timeeffort:period_summary", period_id=report.period_id)
+
+    lines = report.lines.order_by("sort_order", "activity_name_snapshot").all()
+    direct = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.DIRECT]
+    indirect = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.INDIRECT]
+    leave = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.LEAVE]
+    unallowable = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.UNALLOWABLE]
+
+    weekly_data = []
+    if report.submission_type == PeriodReport.SubmissionType.HOURS:
+        # Use _get_salary_periods to mirror the period_summary view logic exactly.
+        # report.covered_periods uses the same filter but going through _get_salary_periods
+        # ensures consistent calendar/period_index handling even for legacy periods.
+        salary_periods = _get_salary_periods(report.period)
+        covered_weeks = ReportingWeek.objects.filter(
+            period__in=salary_periods
+        ).order_by("start_date")
+        for week in covered_weeks:
+            ts = (
+                WeeklyTimesheet.objects.filter(staff=report.staff, week=week)
+                .first()
+            )
+            lines_qs = (
+                ts.lines.select_related("activity")
+                .order_by("activity__sort_order", "activity__name")
+                .all()
+            ) if ts else []
+            weekly_data.append({
+                "week": week,
+                "timesheet": ts,
+                "lines": lines_qs,
+                "total": ts.total_hours if ts else Decimal("0"),
+            })
+
+    period_end = _get_28day_end(report.period) if not report.staff.is_hourly else report.period.end_date
+
+    return render(
+        request,
+        "timeeffort/final_report_print.html",
+        {
+            "report": report,
+            "staff": report.staff,
+            "period": report.period,
+            "period_end": period_end,
+            "direct_lines": direct,
+            "indirect_lines": indirect,
+            "leave_lines": leave,
+            "unallowable_lines": unallowable,
+            "weekly_data": weekly_data,
+            "total_hours": report.total_hours,
+            "is_pct_report": report.submission_type == PeriodReport.SubmissionType.PCT,
+            "generated_at": timezone.now(),
+            "day_labels": SALARY_DAY_LABELS,
+        },
+    )
 
 
 @login_required
@@ -1408,6 +1503,7 @@ def director_period_entry(request, period_id):
         else:
             initialize_director_period_report(report, holiday_pct=holiday_pct)
             initial = _report_lines_to_form_data(report)
+        initial.setdefault("pct_holiday", holiday_pct)
         form = DirectorPeriodEntryForm(initial=initial, holiday_pct=holiday_pct)
 
     return render(
@@ -1518,6 +1614,7 @@ def _save_director_report_lines(report, cleaned, holiday_pct, main_grant_code=""
             Activity.Classification.LEAVE,
         ),
         ("Vacation", "pct_vacation", "desc_vacation", Activity.Classification.LEAVE),
+        ("Employer Holiday", "pct_holiday", "desc_holiday", Activity.Classification.INDIRECT),
         (
             "Fundraising / PR",
             "pct_fundraising_pr",
@@ -1565,7 +1662,8 @@ def _report_lines_to_form_data(report):
                 data[f"extra_grant_desc_{extra_idx}"] = line.duties_description
                 extra_idx += 1
         elif line.activity_name_snapshot == "Employer Holiday":
-            pass  # auto-calculated, not editable in the form
+            data["pct_holiday"] = line.percentage
+            data["desc_holiday"] = line.duties_description
         else:
             label_map = {
                 "Administrative": ("pct_administrative", "desc_administrative"),

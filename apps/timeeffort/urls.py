@@ -8,8 +8,10 @@ urlpatterns = [
     path("week/<int:week_id>/", views.weekly_entry, name="weekly_entry"),
     path("period/<int:period_id>/", views.period_summary, name="period_summary"),
     path("period/<int:period_id>/describe/", views.final_report_describe, name="final_report_describe"),
+    path("week/<int:timesheet_id>/print/", views.weekly_print, name="weekly_print"),
     path("download/weekly/<int:timesheet_id>/", views.download_weekly_pdf, name="download_weekly_pdf"),
     path("download/final/<int:report_id>/", views.download_final_pdf, name="download_final_pdf"),
+    path("report/<int:report_id>/print/", views.final_report_print, name="final_report_print"),
     # Salary
     path("salary/copy/<int:period_id>/", views.copy_previous_period, name="copy_previous_period"),
     # Director
