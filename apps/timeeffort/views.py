@@ -1059,11 +1059,13 @@ def final_report_describe(request, period_id):
 
 @login_required
 def weekly_print(request, timesheet_id):
-    profile = _get_staff_profile(request)
-    if not profile:
-        raise Http404
-
-    timesheet = get_object_or_404(WeeklyTimesheet, pk=timesheet_id, staff=profile)
+    if request.user.is_staff:
+        timesheet = get_object_or_404(WeeklyTimesheet, pk=timesheet_id)
+    else:
+        profile = _get_staff_profile(request)
+        if not profile:
+            raise Http404
+        timesheet = get_object_or_404(WeeklyTimesheet, pk=timesheet_id, staff=profile)
     lines = (
         timesheet.lines.select_related("activity")
         .order_by("activity__sort_order", "activity__name")
@@ -1112,11 +1114,13 @@ def download_weekly_pdf(request, timesheet_id):
 
 @login_required
 def final_report_print(request, report_id):
-    profile = _get_staff_profile(request)
-    if not profile:
-        raise Http404
-
-    report = get_object_or_404(PeriodReport, pk=report_id, staff=profile)
+    if request.user.is_staff:
+        report = get_object_or_404(PeriodReport, pk=report_id)
+    else:
+        profile = _get_staff_profile(request)
+        if not profile:
+            raise Http404
+        report = get_object_or_404(PeriodReport, pk=report_id, staff=profile)
 
     if not report.lines.exists():
         messages.error(request, "Generate the final report first before printing.")
