@@ -94,62 +94,9 @@ def dashboard(request):
 
     if profile.is_director:
         return _director_dashboard(request, profile)
-
     if profile.is_salary:
         return _salary_dashboard(request, profile)
-
-    available_years, selected_year = _get_year_filter(request)
-
-    periods = (
-        ReportingPeriod.objects.filter(start_date__year=selected_year)
-        .order_by("-start_date")
-        .prefetch_related("weeks")
-    )
-
-    period_summaries = []
-    for period in periods:
-        weeks = period.weeks.all()
-        submitted_ids = WeeklyTimesheet.objects.filter(
-            staff=profile,
-            week__in=weeks,
-            status=WeeklyTimesheet.Status.SUBMITTED,
-        ).values_list("week_id", flat=True)
-
-        outstanding = weeks.exclude(id__in=submitted_ids)
-
-        period_summaries.append(
-            {
-                "period": period,
-                "total_weeks": weeks.count(),
-                "submitted_count": len(submitted_ids),
-                "outstanding_weeks": outstanding,
-            }
-        )
-
-    recent_reports = (
-        PeriodReport.objects.filter(
-            staff=profile,
-            status__in=[
-                PeriodReport.Status.SUBMITTED,
-                PeriodReport.Status.SUPERVISOR_APPROVED,
-                PeriodReport.Status.PROCESSED,
-            ],
-        )
-        .select_related("period")
-        .order_by("-period__start_date")[:3]
-    )
-
-    return render(
-        request,
-        "timeeffort/dashboard.html",
-        {
-            "profile": profile,
-            "period_summaries": period_summaries,
-            "recent_reports": recent_reports,
-            "available_years": available_years,
-            "selected_year": selected_year,
-        },
-    )
+    return _hourly_dashboard(request, profile)
 
 
 # =============================================================================
@@ -179,8 +126,6 @@ def weekly_entry(request, week_id):
         defaults={"status": WeeklyTimesheet.Status.DRAFT},
     )
 
-    edits_allowed = week.period.edits_allowed
-
     initial, num_preset_rows = _build_initial_for_week(profile, week)
 
     if request.method == "POST":
@@ -209,8 +154,6 @@ def weekly_entry(request, week_id):
                     "show_zero_modal": True,
                     "num_preset_rows": num_preset_rows,
                     "day_labels": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-                    "edits_allowed": edits_allowed,
-                    "submission_deadline": week.period.submission_deadline,
                 },
             )
 
@@ -293,8 +236,6 @@ def weekly_entry(request, week_id):
             "show_zero_modal": False,
             "num_preset_rows": num_preset_rows,
             "day_labels": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-            "edits_allowed": edits_allowed,
-            "submission_deadline": week.period.submission_deadline,
         },
     )
 
@@ -706,6 +647,8 @@ def _salary_weekly_entry(request, profile, week):
         week=week,
         defaults={"status": WeeklyTimesheet.Status.DRAFT},
     )
+    # Sequential week number across the full 28-day window (1-4, not 1-2 per period).
+    display_week_number = week.week_number if week.period.period_index % 2 == 0 else week.week_number + 2
     holiday_dates = set(
         AIMHoliday.objects.filter(
             date__range=[week.start_date, week.end_date]
@@ -768,6 +711,7 @@ def _salary_weekly_entry(request, profile, week):
                         "day_labels": SALARY_DAY_LABELS,
                         "day_keys": SALARY_DAY_KEYS,
                         "holiday_dates": holiday_dates,
+                        "display_week_number": display_week_number,
                     },
                 )
             timesheet.submit()
@@ -796,6 +740,7 @@ def _salary_weekly_entry(request, profile, week):
             "day_labels": SALARY_DAY_LABELS,
             "day_keys": SALARY_DAY_KEYS,
             "holiday_dates": holiday_dates,
+            "display_week_number": display_week_number,
         },
     )
 
@@ -1000,9 +945,6 @@ def final_report_describe(request, period_id):
         period=period,
         defaults={"submission_type": PeriodReport.SubmissionType.HOURS},
     )
-    if report.status == PeriodReport.Status.DRAFT:
-        report = initialize_period_report(report)
-        _copy_prior_duties_descriptions(profile, report)
 
     DescribeFormSet = modelformset_factory(
         PeriodReportLine,
@@ -1017,27 +959,30 @@ def final_report_describe(request, period_id):
         if formset.is_valid():
             formset.save()
             report.refresh_from_db()
-            # Validate percentages before allowing generation
             lines = report.lines.all()
-            rows = [{"percentage": l.percentage} for l in lines]
             if not validate_period_percentages(
                 [{"percentage": l.percentage} for l in lines]
             ):
                 messages.error(
                     request,
                     f"Percentages do not sum to 100% (got "
-                    f"{sum(l.percentage for l in lines):.2f}%). Contact an admin.",
+                    f"{sum(l.percentage for l in lines):.2f}%). Adjust the percentages and try again.",
                 )
                 return redirect("timeeffort:final_report_describe", period_id=period_id)
 
             from .services import generate_final_pdf
 
             generate_final_pdf(report, generated_by=request.user)
+            report.submit()
             messages.success(
                 request, "Final report generated. You can now download your PDF."
             )
             return redirect("timeeffort:period_summary", period_id=period_id)
     else:
+        # Only re-initialize on GET — never on POST, to avoid wiping line IDs mid-submission.
+        if report.status == PeriodReport.Status.DRAFT:
+            report = initialize_period_report(report)
+            _copy_prior_duties_descriptions(profile, report)
         formset = DescribeFormSet(queryset=report.lines.order_by("sort_order"))
 
     return render(
@@ -1251,6 +1196,7 @@ def _copy_prior_duties_descriptions(profile, report):
                 PeriodReport.Status.SUBMITTED,
                 PeriodReport.Status.SUPERVISOR_APPROVED,
                 PeriodReport.Status.PROCESSED,
+                PeriodReport.Status.RETURNED,
             ],
         )
         .order_by("-period__start_date")
@@ -1268,6 +1214,74 @@ def _copy_prior_duties_descriptions(profile, report):
         if desc and not line.duties_description:
             line.duties_description = desc
             line.save(update_fields=["duties_description"])
+
+
+def _hourly_dashboard(request, profile):
+    """Hourly staff dashboard: one 14-day period per card, 2 weekly slots each."""
+    available_years, selected_year = _get_year_filter(request)
+
+    periods = (
+        ReportingPeriod.objects.filter(start_date__year=selected_year)
+        .order_by("-start_date")
+        .prefetch_related("weeks")
+    )
+
+    period_summaries = []
+    for period in periods:
+        weeks = list(period.weeks.order_by("week_number"))
+        submitted_ids = set(
+            WeeklyTimesheet.objects.filter(
+                staff=profile,
+                week__in=weeks,
+                status=WeeklyTimesheet.Status.SUBMITTED,
+            ).values_list("week_id", flat=True)
+        )
+
+        week_statuses = []
+        for week in weeks:
+            ts = WeeklyTimesheet.objects.filter(staff=profile, week=week).first()
+            week_statuses.append({"week": week, "timesheet": ts, "display_number": week.week_number})
+
+        outstanding = [ws for ws in week_statuses if ws["week"].id not in submitted_ids]
+        report = PeriodReport.objects.filter(staff=profile, period=period).first()
+
+        period_summaries.append({
+            "period": period,
+            "period_label": period.label,
+            "period_end": period.end_date,
+            "total_weeks": len(weeks),
+            "submitted_count": len(submitted_ids),
+            "outstanding_weeks": outstanding,
+            "week_statuses": week_statuses,
+            "report": report,
+        })
+
+    _SUBMITTED_STATUSES = [
+        PeriodReport.Status.SUBMITTED,
+        PeriodReport.Status.SUPERVISOR_APPROVED,
+        PeriodReport.Status.PROCESSED,
+        PeriodReport.Status.RETURNED,
+    ]
+    returned_reports = (
+        PeriodReport.objects.filter(staff=profile, status=PeriodReport.Status.RETURNED)
+        .select_related("period").order_by("-returned_at")
+    )
+    recent_reports = (
+        PeriodReport.objects.filter(staff=profile, status__in=_SUBMITTED_STATUSES)
+        .exclude(status=PeriodReport.Status.RETURNED)
+        .select_related("period")
+        .order_by("-period__start_date")[:3]
+    )
+
+    return render(request, "timeeffort/dashboard_weekly.html", {
+        "profile": profile,
+        "period_summaries": period_summaries,
+        "returned_reports": returned_reports,
+        "recent_reports": recent_reports,
+        "available_years": available_years,
+        "selected_year": selected_year,
+        "is_salary": False,
+    })
 
 
 def _salary_dashboard(request, profile):
@@ -1292,13 +1306,14 @@ def _salary_dashboard(request, profile):
                 status=WeeklyTimesheet.Status.SUBMITTED,
             ).values_list("week_id", flat=True)
         )
-        outstanding = all_weeks.exclude(id__in=submitted_ids)
         report = PeriodReport.objects.filter(staff=profile, period=period).first()
 
         week_statuses = []
-        for week in all_weeks:
+        for display_num, week in enumerate(all_weeks, start=1):
             ts = WeeklyTimesheet.objects.filter(staff=profile, week=week).first()
-            week_statuses.append({"week": week, "timesheet": ts})
+            week_statuses.append({"week": week, "timesheet": ts, "display_number": display_num})
+
+        outstanding = [ws for ws in week_statuses if not ws["timesheet"] or ws["timesheet"].status != WeeklyTimesheet.Status.SUBMITTED]
 
         has_prev = ReportingPeriod.objects.filter(
             calendar=period.calendar,
@@ -1318,6 +1333,7 @@ def _salary_dashboard(request, profile):
             "report": report,
             "has_prev": has_prev,
             "holiday_count": holiday_count,
+            "has_submitted": len(submitted_ids) == all_weeks.count(),
         })
 
     # Sort: upcoming deadline first, past-unsubmitted second, fully-submitted last
@@ -1335,31 +1351,32 @@ def _salary_dashboard(request, profile):
 
     period_summaries.sort(key=_sort_key)
 
+    _SUBMITTED_STATUSES = [
+        PeriodReport.Status.SUBMITTED,
+        PeriodReport.Status.SUPERVISOR_APPROVED,
+        PeriodReport.Status.PROCESSED,
+        PeriodReport.Status.RETURNED,
+    ]
+    returned_reports = (
+        PeriodReport.objects.filter(staff=profile, status=PeriodReport.Status.RETURNED)
+        .select_related("period").order_by("-returned_at")
+    )
     recent_reports = (
-        PeriodReport.objects.filter(
-            staff=profile,
-            status__in=[
-                PeriodReport.Status.SUBMITTED,
-                PeriodReport.Status.SUPERVISOR_APPROVED,
-                PeriodReport.Status.PROCESSED,
-            ],
-        )
+        PeriodReport.objects.filter(staff=profile, status__in=_SUBMITTED_STATUSES)
+        .exclude(status=PeriodReport.Status.RETURNED)
         .select_related("period")
         .order_by("-period__start_date")[:5]
     )
 
-    return render(
-        request,
-        "timeeffort/dashboard.html",
-        {
-            "profile": profile,
-            "period_summaries": period_summaries,
-            "is_salary": True,
-            "recent_reports": recent_reports,
-            "available_years": available_years,
-            "selected_year": selected_year,
-        },
-    )
+    return render(request, "timeeffort/dashboard_weekly.html", {
+        "profile": profile,
+        "period_summaries": period_summaries,
+        "is_salary": True,
+        "returned_reports": returned_reports,
+        "recent_reports": recent_reports,
+        "available_years": available_years,
+        "selected_year": selected_year,
+    })
 
 
 def _invalidate_period_report_pdf(profile, period):
@@ -1383,7 +1400,8 @@ def _invalidate_period_report_pdf(profile, period):
     if report and report.generated_at is not None:
         report.pdfs.filter(pdf_type=PDFSnapshot.PDFType.FINAL).delete()
         report.generated_at = None
-        report.save(update_fields=["generated_at", "updated_at"])
+        report.status = PeriodReport.Status.DRAFT
+        report.save(update_fields=["generated_at", "status", "updated_at"])
 
 
 def _director_dashboard(request, profile):
@@ -1417,6 +1435,10 @@ def _director_dashboard(request, profile):
         )
 
     has_defaults = DirectorDefaultAllocation.objects.filter(profile=profile).exists()
+    returned_reports = (
+        PeriodReport.objects.filter(staff=profile, status=PeriodReport.Status.RETURNED)
+        .select_related("period").order_by("-returned_at")
+    )
     recent_reports = (
         PeriodReport.objects.filter(
             staff=profile,
@@ -1430,19 +1452,15 @@ def _director_dashboard(request, profile):
         .order_by("-period__start_date")[:5]
     )
 
-    return render(
-        request,
-        "timeeffort/dashboard.html",
-        {
-            "profile": profile,
-            "period_summaries": period_summaries,
-            "is_director": True,
-            "has_defaults": has_defaults,
-            "recent_reports": recent_reports,
-            "available_years": available_years,
-            "selected_year": selected_year,
-        },
-    )
+    return render(request, "timeeffort/dashboard_director.html", {
+        "profile": profile,
+        "period_summaries": period_summaries,
+        "has_defaults": has_defaults,
+        "returned_reports": returned_reports,
+        "recent_reports": recent_reports,
+        "available_years": available_years,
+        "selected_year": selected_year,
+    })
 
 
 @login_required
@@ -1473,17 +1491,6 @@ def director_period_entry(request, period_id):
         period=period,
         defaults={"submission_type": PeriodReport.SubmissionType.PCT},
     )
-
-    edits_allowed = period.edits_allowed
-    if report.status != PeriodReport.Status.DRAFT and not edits_allowed:
-        return render(
-            request,
-            "timeeffort/director_entry_locked.html",
-            {
-                "report": report,
-                "period": period,
-            },
-        )
 
     if request.method == "POST":
         action = request.POST.get("action", "save")
@@ -1522,8 +1529,6 @@ def director_period_entry(request, period_id):
             "holiday_count": holiday_count,
             "holiday_pct": holiday_pct,
             "holidays": holidays,
-            "edits_allowed": edits_allowed,
-            "submission_deadline": period.submission_deadline,
         },
     )
 
@@ -1758,6 +1763,7 @@ def all_reports(request):
             status__in=[
                 PeriodReport.Status.SUBMITTED,
                 PeriodReport.Status.SUPERVISOR_APPROVED,
+                PeriodReport.Status.RETURNED,
                 PeriodReport.Status.PROCESSED,
             ],
             period__start_date__year=selected_year,
@@ -1780,3 +1786,103 @@ def all_reports(request):
             "staff_type_choices": StaffTimesheetProfile.StaffType.choices,
         },
     )
+
+
+# =============================================================================
+# SUPERVISOR VIEWS
+# =============================================================================
+
+
+@login_required
+def supervisor_queue(request):
+    """Period reports submitted by the current user's direct reports, awaiting review."""
+    pending = (
+        PeriodReport.objects.filter(
+            staff__supervisor=request.user,
+            status=PeriodReport.Status.SUBMITTED,
+        )
+        .select_related("staff__user", "period")
+        .order_by("employee_name_snapshot", "-submitted_at")
+    )
+    recent = (
+        PeriodReport.objects.filter(
+            staff__supervisor=request.user,
+            status__in=[
+                PeriodReport.Status.SUPERVISOR_APPROVED,
+                PeriodReport.Status.RETURNED,
+                PeriodReport.Status.PROCESSED,
+            ],
+        )
+        .select_related("staff__user", "period")
+        .order_by("-updated_at")[:20]
+    )
+    return render(request, "timeeffort/supervisor_queue.html", {
+        "pending": pending,
+        "recent": recent,
+    })
+
+
+@login_required
+def supervisor_review(request, report_id):
+    """Supervisor reviews a specific period report; can approve or return with notes."""
+    report = get_object_or_404(
+        PeriodReport,
+        pk=report_id,
+        staff__supervisor=request.user,
+    )
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "approve" and report.status == PeriodReport.Status.SUBMITTED:
+            report.supervisor_approve(request.user)
+            messages.success(request, f"Report for {report.employee_name_snapshot} approved.")
+            return redirect("timeeffort:supervisor_queue")
+        elif action == "return":
+            notes = request.POST.get("supervisor_notes", "").strip()
+            if not notes:
+                messages.error(request, "Please provide a reason for returning the report.")
+            else:
+                report.return_report(request.user, notes)
+                messages.success(request, f"Report returned to {report.employee_name_snapshot} with comments.")
+                return redirect("timeeffort:supervisor_queue")
+
+    lines = report.lines.order_by("sort_order", "activity_name_snapshot").all()
+    direct = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.DIRECT]
+    indirect = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.INDIRECT]
+    leave = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.LEAVE]
+    unallowable = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.UNALLOWABLE]
+
+    weekly_data = []
+    if report.submission_type == PeriodReport.SubmissionType.HOURS:
+        salary_periods = _get_salary_periods(report.period)
+        covered_weeks = ReportingWeek.objects.filter(period__in=salary_periods).order_by("start_date")
+        for week in covered_weeks:
+            ts = WeeklyTimesheet.objects.filter(staff=report.staff, week=week).first()
+            lines_qs = (
+                ts.lines.select_related("activity")
+                .order_by("activity__sort_order", "activity__name")
+                .all()
+            ) if ts else []
+            weekly_data.append({
+                "week": week,
+                "timesheet": ts,
+                "lines": lines_qs,
+                "total": ts.total_hours if ts else Decimal("0"),
+            })
+
+    period_end = _get_28day_end(report.period) if not report.staff.is_hourly else report.period.end_date
+
+    return render(request, "timeeffort/supervisor_review.html", {
+        "report": report,
+        "period": report.period,
+        "period_end": period_end,
+        "direct_lines": direct,
+        "indirect_lines": indirect,
+        "leave_lines": leave,
+        "unallowable_lines": unallowable,
+        "weekly_data": weekly_data,
+        "total_hours": report.total_hours,
+        "is_pct_report": report.submission_type == PeriodReport.SubmissionType.PCT,
+        "day_labels": SALARY_DAY_LABELS,
+        "generated_at": timezone.now(),
+    })

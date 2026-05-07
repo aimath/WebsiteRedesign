@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Time & Effort — Dashboard{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Time &amp; Effort Reporting</h2>
+    <span class="badge bg-secondary">{{ profile.get_staff_type_display }}</span>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {# ── Returned reports alert ── #}
+  {% for rpt in returned_reports %}
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <strong>Action Required — Report Returned:</strong>
+    {{ rpt.period.salary_month_label }}
+    {% if rpt.supervisor_notes %}
+      <br><em>Supervisor note: {{ rpt.supervisor_notes }}</em>
+    {% endif %}
+    <div class="mt-2">
+      <a href="{% url 'timeeffort:director_period_entry' rpt.period.id %}" class="btn btn-sm btn-danger">Edit &amp; Resubmit</a>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+
+  {% if not has_defaults %}
+  <div class="alert alert-warning">
+    Set your <a href="{% url 'timeeffort:director_set_defaults' %}">default allocations</a>
+    so forms pre-fill each period.
+  </div>
+  {% endif %}
+
+  {% if available_years %}
+  <div class="d-flex gap-2 flex-wrap mb-4">
+    {% for yr in available_years %}
+      <a href="?year={{ yr }}"
+         class="btn btn-sm {% if yr == selected_year %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ yr }}
+      </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% for summary in period_summaries %}
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>{{ summary.period_label }}</strong>
+      <span class="text-muted small">{{ summary.period.start_date|date:"M j, Y" }} – {{ summary.period_end|date:"M j, Y" }}</span>
+    </div>
+    <div class="card-body">
+      {% if summary.report %}
+        {% if summary.report.status == "DRAFT" %}
+          <span class="badge bg-warning text-dark mb-2">Draft</span>
+        {% elif summary.report.status == "SUBMITTED" %}
+          <span class="badge bg-success mb-2">Submitted</span>
+        {% elif summary.report.status == "SUPV_APPR" %}
+          <span class="badge bg-primary mb-2">Supervisor Approved</span>
+        {% elif summary.report.status == "RETURNED" %}
+          <span class="badge bg-danger mb-2">Returned — Action Required</span>
+        {% else %}
+          <span class="badge bg-secondary mb-2">Processed</span>
+        {% endif %}
+      {% else %}
+        <span class="badge bg-secondary mb-2">Not started</span>
+      {% endif %}
+
+      {% if summary.holiday_count %}
+        <p class="text-muted small mb-2">
+          {{ summary.holiday_count }} holiday(s) in this period —
+          {{ summary.holiday_pct }}% automatically deducted from direct.
+        </p>
+      {% endif %}
+
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'timeeffort:director_period_entry' summary.period.id %}"
+           class="btn btn-sm {% if summary.report and summary.report.status not in 'DRAFT' %}btn-outline-secondary{% else %}btn-primary{% endif %}">
+          {% if summary.report and summary.report.status != "DRAFT" %}Edit / View{% else %}Enter Report{% endif %}
+        </a>
+        {% if summary.report and summary.report.status != "DRAFT" %}
+          <a href="{% url 'timeeffort:final_report_print' summary.report.id %}"
+             class="btn btn-sm btn-outline-success" target="_blank">Print / PDF ↓</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+    <div class="alert alert-info">No active reporting periods. Check back soon or contact your admin.</div>
+  {% endfor %}
+
+  {% if recent_reports %}
+  <h5 class="mt-4">Recent Submitted Reports</h5>
+  <table class="table table-sm table-hover">
+    <thead><tr><th>Period</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for rpt in recent_reports %}
+      <tr>
+        <td>{{ rpt.period.salary_month_label }}</td>
+        <td>{{ rpt.get_status_display }}</td>
+        <td><a href="{% url 'timeeffort:final_report_print' rpt.id %}" class="btn btn-sm btn-outline-secondary" target="_blank">Print / PDF</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="mt-3">
+    <a href="{% url 'timeeffort:director_set_defaults' %}" class="btn btn-sm btn-outline-secondary">
+      Manage Default Allocations
+    </a>
+  </div>
+</div>
+{% endblock %}

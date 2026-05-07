@@ -641,6 +641,7 @@ class PeriodReport(models.Model):
         DRAFT = "DRAFT", "Draft"
         SUBMITTED = "SUBMITTED", "Submitted"
         SUPERVISOR_APPROVED = "SUPV_APPR", "Supervisor Approved"
+        RETURNED = "RETURNED", "Returned"
         PROCESSED = "PROCESSED", "Processed"
 
     class SubmissionType(models.TextChoices):
@@ -703,6 +704,17 @@ class PeriodReport(models.Model):
     employee_name_snapshot = models.CharField(max_length=255, blank=True)
     generated_at = models.DateTimeField(null=True, blank=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
+
+    # Supervisor return-for-changes
+    supervisor_notes = models.TextField(blank=True, default="")
+    returned_at = models.DateTimeField(null=True, blank=True)
+    returned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="returned_reports",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -799,6 +811,13 @@ class PeriodReport(models.Model):
         self.save(update_fields=[
             "supervisor_approved_at", "supervisor_approved_by", "status", "updated_at",
         ])
+
+    def return_report(self, returned_by, notes):
+        self.status = self.Status.RETURNED
+        self.returned_at = timezone.now()
+        self.returned_by = returned_by
+        self.supervisor_notes = notes
+        self.save(update_fields=["status", "returned_at", "returned_by", "supervisor_notes", "updated_at"])
 
     def mark_processed(self, processed_by):
         self.processed_at = timezone.now()

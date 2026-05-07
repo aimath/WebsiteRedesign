@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Time & Effort — Dashboard{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Time &amp; Effort Reporting</h2>
+    <span class="badge bg-secondary">{{ profile.get_staff_type_display }}</span>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {# ── Returned reports — prominent alerts ── #}
+  {% for rpt in returned_reports %}
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <strong>Action Required — Report Returned:</strong>
+    {% if is_salary %}{{ rpt.period.salary_month_label }}{% else %}{{ rpt.period.label }}{% endif %}
+    {% if rpt.supervisor_notes %}
+      <br><em>Supervisor note: {{ rpt.supervisor_notes }}</em>
+    {% endif %}
+    <div class="mt-2">
+      <a href="{% url 'timeeffort:period_summary' rpt.period.id %}" class="btn btn-sm btn-danger">
+        Review &amp; Resubmit
+      </a>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+
+  {% if available_years %}
+  <div class="d-flex gap-2 flex-wrap mb-4">
+    {% for yr in available_years %}
+      <a href="?year={{ yr }}"
+         class="btn btn-sm {% if yr == selected_year %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ yr }}
+      </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% for summary in period_summaries %}
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>{{ summary.period_label }}</strong>
+      <span class="text-muted small">{{ summary.period.start_date|date:"M j, Y" }} – {{ summary.period_end|date:"M j, Y" }}</span>
+    </div>
+    <div class="card-body">
+      {# Report status badge #}
+      {% if summary.report %}
+        {% if summary.report.status == "SUBMITTED" %}
+          <span class="badge bg-success mb-2">Report Submitted</span>
+        {% elif summary.report.status == "SUPV_APPR" %}
+          <span class="badge bg-primary mb-2">Supervisor Approved</span>
+        {% elif summary.report.status == "PROCESSED" %}
+          <span class="badge bg-secondary mb-2">Processed</span>
+        {% elif summary.report.status == "RETURNED" %}
+          <span class="badge bg-danger mb-2">Returned — Action Required</span>
+        {% endif %}
+      {% endif %}
+
+      {# Weekly progress bar #}
+      <div class="mb-2">
+        <div class="progress" style="height: 8px;">
+          {% widthratio summary.submitted_count summary.total_weeks 100 as pct %}
+          <div class="progress-bar bg-success" style="width: {{ pct }}%"></div>
+        </div>
+        <small class="text-muted">{{ summary.submitted_count }} of {{ summary.total_weeks }} week(s) submitted</small>
+      </div>
+
+      {# Holiday alert (salary only) #}
+      {% if is_salary and summary.holiday_count %}
+        <div class="alert alert-warning py-2 mb-2">
+          <small>
+            <strong>{{ summary.holiday_count }} holiday{{ summary.holiday_count|pluralize }} this period.</strong>
+            Holiday hours are auto-filled on the weekly form.
+            {% if summary.has_prev %}Copying from last period will zero out those days.{% endif %}
+          </small>
+        </div>
+      {% endif %}
+
+      {# Outstanding weeks — action buttons #}
+      {% if summary.outstanding_weeks %}
+        <div class="mb-3">
+          {% for ws in summary.outstanding_weeks %}
+            <a href="{% url 'timeeffort:weekly_entry' ws.week.id %}"
+               class="btn btn-sm btn-danger me-2 mb-1">
+              &#9888; Enter Week {{ ws.display_number }}
+              <small>({{ ws.week.start_date|date:"M j" }} – {{ ws.week.end_date|date:"M j" }})</small>
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {# Week navigation buttons #}
+      <div class="d-flex gap-2 flex-wrap">
+        {% for ws in summary.week_statuses %}
+          {% if ws.timesheet and ws.timesheet.status == "SUBMITTED" %}
+            <a href="{% url 'timeeffort:weekly_entry' ws.week.id %}"
+               class="btn btn-sm btn-outline-secondary">
+              Wk {{ ws.display_number }} Edit
+            </a>
+            <a href="{% url 'timeeffort:weekly_print' ws.timesheet.id %}"
+               class="btn btn-sm btn-outline-success" target="_blank">
+              Wk {{ ws.display_number }} Print ↓
+            </a>
+          {% else %}
+            <a href="{% url 'timeeffort:weekly_entry' ws.week.id %}"
+               class="btn btn-sm btn-outline-secondary">
+              Wk {{ ws.display_number }}{% if ws.timesheet %} (Draft){% endif %}
+            </a>
+          {% endif %}
+        {% endfor %}
+
+        <a href="{% url 'timeeffort:period_summary' summary.period.id %}"
+           class="btn btn-sm btn-outline-primary ms-auto">
+          Period Summary →
+        </a>
+
+        {# Copy Last Period (salary only) #}
+        {% if is_salary and summary.has_prev %}
+        <form method="post" action="{% url 'timeeffort:copy_previous_period' summary.period.id %}" class="d-inline ms-1">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-secondary"
+            onclick="return confirm('Copy all 4 weeks from the previous period? Existing drafts will be replaced.')">
+            Copy Last Period
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+    <div class="alert alert-info">No active reporting periods. Check back soon or contact your admin.</div>
+  {% endfor %}
+
+  {# Recent final reports #}
+  {% if recent_reports %}
+  <h5 class="mt-4">Recent Final Reports</h5>
+  <table class="table table-sm table-hover">
+    <thead>
+      <tr><th>Period</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for rpt in recent_reports %}
+      <tr>
+        <td>{% if is_salary %}{{ rpt.period.salary_month_label }}{% else %}{{ rpt.period.label }}{% endif %}</td>
+        <td>{{ rpt.get_status_display }}</td>
+        <td>
+          <a href="{% url 'timeeffort:final_report_print' rpt.id %}"
+             class="btn btn-sm btn-outline-secondary" target="_blank">Print / PDF</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}
