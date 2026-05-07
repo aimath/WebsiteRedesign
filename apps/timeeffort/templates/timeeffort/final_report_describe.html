@@ -27,7 +27,7 @@
   {% endif %}
 
   <div class="alert alert-info">
-    Review the hours rollup below. You can adjust the % if needed (e.g. to correct a holiday), then add a brief description of work performed for each activity. Percentages must sum to 100%.
+    Review the hours rollup below. Adjust percentages if needed (e.g. to account for a holiday), add a brief description for each activity, then click Submit. Percentages must sum to 100%.
   </div>
 
   <form method="post">
@@ -84,7 +84,7 @@
     </table>
 
     <div class="d-flex gap-2 align-items-center">
-      <button type="submit" class="btn btn-primary">Generate PDF →</button>
+      <button type="submit" class="btn btn-primary">Submit Report →</button>
       <a href="{% url 'timeeffort:period_summary' period.id %}" class="btn btn-outline-secondary">Cancel</a>
       <span id="pct-warning" class="text-danger small ms-2" style="display:none">Percentages must sum to 100%</span>
     </div>

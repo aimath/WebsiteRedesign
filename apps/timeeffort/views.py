@@ -30,8 +30,6 @@ from .models import (
     WeeklyTimesheetLine,
 )
 from .services import (
-    count_holidays_in_period,
-    generate_weekly_pdf,
     initialize_director_period_report,
     initialize_period_report,
     validate_period_percentages,
@@ -970,13 +968,10 @@ def final_report_describe(request, period_id):
                 )
                 return redirect("timeeffort:final_report_describe", period_id=period_id)
 
-            from .services import generate_final_pdf
-
-            generate_final_pdf(report, generated_by=request.user)
+            report.generated_at = timezone.now()
+            report.save(update_fields=["generated_at", "updated_at"])
             report.submit()
-            messages.success(
-                request, "Final report generated. You can now download your PDF."
-            )
+            messages.success(request, "Report submitted successfully.")
             return redirect("timeeffort:period_summary", period_id=period_id)
     else:
         # Only re-initialize on GET — never on POST, to avoid wiping line IDs mid-submission.
@@ -1034,27 +1029,8 @@ def weekly_print(request, timesheet_id):
 
 @login_required
 def download_weekly_pdf(request, timesheet_id):
-    profile = _get_staff_profile(request)
-    if not profile:
-        raise Http404
-
-    timesheet = get_object_or_404(WeeklyTimesheet, pk=timesheet_id, staff=profile)
-
-    if timesheet.status != WeeklyTimesheet.Status.SUBMITTED:
-        messages.error(
-            request, "Weekly report can only be downloaded after submission."
-        )
-        return redirect("timeeffort:weekly_entry", week_id=timesheet.week_id)
-
-    snapshot = (
-        timesheet.pdfs.filter(pdf_type=PDFSnapshot.PDFType.WEEKLY)
-        .order_by("-version")
-        .first()
-    )
-    if not snapshot:
-        snapshot = generate_weekly_pdf(timesheet, generated_by=request.user)
-
-    return _serve_pdf(snapshot, f"weekly_report_{timesheet.week.start_date}.pdf")
+    # Redirect to the print/HTML view; server-side PDF not yet available.
+    return redirect("timeeffort:weekly_print", timesheet_id=timesheet_id)
 
 
 @login_required
@@ -1128,23 +1104,8 @@ def final_report_print(request, report_id):
 
 @login_required
 def download_final_pdf(request, report_id):
-    profile = _get_staff_profile(request)
-    if not profile:
-        raise Http404
-
-    report = get_object_or_404(PeriodReport, pk=report_id, staff=profile)
-    snapshot = (
-        report.pdfs.filter(pdf_type=PDFSnapshot.PDFType.FINAL)
-        .order_by("-version")
-        .first()
-    )
-
-    if not snapshot:
-        messages.error(request, "No PDF has been generated yet.")
-        return redirect("timeeffort:period_summary", period_id=report.period_id)
-
-    filename = f"effort_report_{report.period.start_date}_{report.period.end_date}.pdf"
-    return _serve_pdf(snapshot, filename)
+    # Redirect to the print/HTML view; PDF download not yet available server-side.
+    return redirect("timeeffort:final_report_print", report_id=report_id)
 
 
 def _serve_pdf(snapshot, filename):
@@ -1536,32 +1497,8 @@ def director_period_entry(request, period_id):
 @login_required
 def download_director_pdf(request, submission_id):
     """submission_id is a PeriodReport pk (name kept for URL compatibility)."""
-    profile = _get_staff_profile(request)
-    if not profile:
-        raise Http404
-
-    report = get_object_or_404(PeriodReport, pk=submission_id, staff=profile)
-
-    if report.status == PeriodReport.Status.DRAFT:
-        messages.error(
-            request, "Director report can only be downloaded after submission."
-        )
-        return redirect("timeeffort:director_period_entry", period_id=report.period_id)
-
-    snapshot = (
-        report.pdfs.filter(pdf_type=PDFSnapshot.PDFType.FINAL)
-        .order_by("-version")
-        .first()
-    )
-    if not snapshot:
-        from .services import generate_final_pdf
-
-        snapshot = generate_final_pdf(report, generated_by=request.user)
-
-    filename = (
-        f"director_report_{report.period.start_date}_{report.period.end_date}.pdf"
-    )
-    return _serve_pdf(snapshot, filename)
+    # Redirect to the print/HTML view; server-side PDF not yet available.
+    return redirect("timeeffort:final_report_print", report_id=submission_id)
 
 
 # --- Director helpers ---

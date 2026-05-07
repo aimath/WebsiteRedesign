@@ -67,15 +67,15 @@
           Outstanding weeks are highlighted above.
         </div>
         <button class="btn btn-secondary" disabled>Generate Final Report</button>
-      {% elif report and report.generated_at %}
-        <p class="text-success mb-2">✓ Final report generated on {{ report.generated_at|date:"F j, Y" }}.</p>
+      {% elif report and report.status != "DRAFT" %}
+        <p class="text-success mb-2">✓ Report submitted on {{ report.submitted_at|date:"F j, Y" }}.</p>
         <div class="d-flex gap-2 flex-wrap">
           <a href="{% url 'timeeffort:final_report_print' report.id %}" class="btn btn-success" target="_blank">Print / Save as PDF</a>
-          <a href="{% url 'timeeffort:final_report_describe' period.id %}" class="btn btn-outline-secondary btn-sm">Regenerate</a>
+          <a href="{% url 'timeeffort:final_report_describe' period.id %}" class="btn btn-outline-secondary btn-sm">Edit &amp; Resubmit</a>
         </div>
       {% else %}
-        <p class="text-muted mb-2">All weeks submitted. Review and add activity descriptions, then generate your PDF.</p>
-        <a href="{% url 'timeeffort:final_report_describe' period.id %}" class="btn btn-primary">Generate Final Report →</a>
+        <p class="text-muted mb-2">All weeks submitted. Review and add activity descriptions, then submit your report.</p>
+        <a href="{% url 'timeeffort:final_report_describe' period.id %}" class="btn btn-primary">Fill Out Final Report →</a>
       {% endif %}
     </div>
   </div>
