@@ -10,11 +10,9 @@
       <a href="{% url 'timeeffort:dashboard' %}"
          class="btn btn-sm btn-outline-secondary">← Dashboard</a>
     </div>
-    {% if report.status != "DRAFT" and edits_allowed %}
-      <div class="alert alert-warning">
+    {% if report.status != "DRAFT" %}
+      <div class="alert alert-info">
         <strong>Already submitted.</strong>
-        You can still make changes until
-        <strong>{{ submission_deadline|date:"M j, Y" }} at {{ submission_deadline|date:"g:i A" }}</strong>.
         Re-saving will update your submission.
       </div>
     {% endif %}

@@ -141,11 +141,11 @@
 
         {% if summary.outstanding_weeks %}
           <div class="mb-3">
-            {% for week in summary.outstanding_weeks %}
-              <a href="{% url 'timeeffort:weekly_entry' week.id %}"
+            {% for ws in summary.outstanding_weeks %}
+              <a href="{% url 'timeeffort:weekly_entry' ws.week.id %}"
                  class="btn btn-sm btn-danger me-2 mb-1">
-                ⚠ Enter Week {{ week.week_number }}
-                <small>({{ week.start_date|date:"M j" }} – {{ week.end_date|date:"M j" }})</small>
+                ⚠ Enter Week {{ ws.display_number }}
+                <small>({{ ws.week.start_date|date:"M j" }} – {{ ws.week.end_date|date:"M j" }})</small>
               </a>
             {% endfor %}
           </div>
@@ -156,16 +156,16 @@
             {% if ws.timesheet and ws.timesheet.status == "SUBMITTED" %}
               <a href="{% url 'timeeffort:weekly_entry' ws.week.id %}"
                  class="btn btn-sm btn-outline-secondary">
-                Wk {{ ws.week.week_number }} Edit
+                Wk {{ ws.display_number }} Edit
               </a>
               <a href="{% url 'timeeffort:weekly_print' ws.timesheet.id %}"
                  class="btn btn-sm btn-outline-success" target="_blank">
-                Wk {{ ws.week.week_number }} Print ↓
+                Wk {{ ws.display_number }} Print ↓
               </a>
             {% else %}
               <a href="{% url 'timeeffort:weekly_entry' ws.week.id %}"
                  class="btn btn-sm btn-outline-secondary">
-                Wk {{ ws.week.week_number }}{% if ws.timesheet %} (Draft){% endif %}
+                Wk {{ ws.display_number }}{% if ws.timesheet %} (Draft){% endif %}
               </a>
             {% endif %}
           {% endfor %}

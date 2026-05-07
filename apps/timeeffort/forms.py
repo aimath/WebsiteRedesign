@@ -244,17 +244,23 @@ class DirectorPeriodEntryForm(forms.Form):
 
 
 class PeriodDescribeForm(forms.ModelForm):
-    """Form for entering duties description on a single PeriodReportLine."""
+    """Form for reviewing and editing a single PeriodReportLine (description + percentage override)."""
 
     class Meta:
         model = PeriodReportLine
-        fields = ["duties_description"]
+        fields = ["percentage", "duties_description"]
         widgets = {
+            "percentage": forms.NumberInput(attrs={
+                "class": "form-control form-control-sm text-end pct-field",
+                "min": "0",
+                "max": "100",
+                "step": "0.01",
+            }),
             "duties_description": forms.Textarea(
                 attrs={
                     "class": "form-control form-control-sm",
                     "rows": 2,
                     "placeholder": "e.g. Meetings / excel / website",
                 }
-            )
+            ),
         }

@@ -118,6 +118,23 @@
     <header>
       {% include "includes/navbar.html" %}
     </header>
+    {# ── Time & Effort notification bar ── #}
+    {% if user.is_authenticated %}
+      {% if te_returned_count %}
+      <div class="alert alert-danger alert-dismissible fade show mb-0 rounded-0 text-center py-2" role="alert">
+        <strong>{{ te_returned_count }} T&amp;E report{{ te_returned_count|pluralize }} returned for changes.</strong>
+        <a href="{% url 'timeeffort:dashboard' %}" class="alert-link ms-2">Go to dashboard →</a>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endif %}
+      {% if te_pending_approvals %}
+      <div class="alert alert-warning alert-dismissible fade show mb-0 rounded-0 text-center py-2" role="alert">
+        <strong>{{ te_pending_approvals }} T&amp;E report{{ te_pending_approvals|pluralize }} awaiting your supervisor review.</strong>
+        <a href="{% url 'timeeffort:supervisor_queue' %}" class="alert-link ms-2">Review now →</a>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endif %}
+    {% endif %}
     <main id="main-content">
       {% block content %}
       {% endblock content %}

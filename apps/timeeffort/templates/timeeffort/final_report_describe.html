@@ -18,10 +18,16 @@
     {% endfor %}
   {% endif %}
 
+  {% if report.status == "RETURNED" and report.supervisor_notes %}
+  <div class="alert alert-danger">
+    <strong>This report was returned by your supervisor.</strong><br>
+    <em>{{ report.supervisor_notes }}</em>
+    <br><small class="text-muted">Correct the issues below and click "Generate PDF →" to resubmit.</small>
+  </div>
+  {% endif %}
+
   <div class="alert alert-info">
-    For each activity below, add a brief description of the work performed this period
-    (e.g. "Meetings / Excel / Website"). This will appear on your certified report.
-    Descriptions are optional but recommended.
+    Review the hours rollup below. You can adjust the % if needed (e.g. to correct a holiday), then add a brief description of work performed for each activity. Percentages must sum to 100%.
   </div>
 
   <form method="post">
@@ -34,7 +40,7 @@
           <th>Activity</th>
           <th>Grant Code</th>
           <th class="text-center">Hours</th>
-          <th class="text-center">%</th>
+          <th class="text-center" style="width:100px">%</th>
           <th>Duties / Work Performed</th>
         </tr>
       </thead>
@@ -47,7 +53,15 @@
             </td>
             <td class="text-muted small">{{ form.instance.grant_code_snapshot|default:"—" }}</td>
             <td class="text-center">{{ form.instance.total_hours }}</td>
-            <td class="text-center">{{ form.instance.percentage }}%</td>
+            <td class="text-center">
+              <div class="input-group input-group-sm">
+                {{ form.percentage }}
+                <span class="input-group-text">%</span>
+              </div>
+              {% if form.percentage.errors %}
+                <div class="text-danger small">{{ form.percentage.errors }}</div>
+              {% endif %}
+            </td>
             <td>
               {{ form.duties_description }}
               {% if form.duties_description.errors %}
@@ -61,16 +75,37 @@
         <tr class="table-light fw-bold">
           <td colspan="2">TOTAL</td>
           <td class="text-center">{{ report.total_hours }}</td>
-          <td class="text-center">100%</td>
+          <td class="text-center">
+            <span id="pct-total" class="text-danger">0.00%</span>
+          </td>
           <td></td>
         </tr>
       </tfoot>
     </table>
 
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 align-items-center">
       <button type="submit" class="btn btn-primary">Generate PDF →</button>
       <a href="{% url 'timeeffort:period_summary' period.id %}" class="btn btn-outline-secondary">Cancel</a>
+      <span id="pct-warning" class="text-danger small ms-2" style="display:none">Percentages must sum to 100%</span>
     </div>
   </form>
 </div>
+<script>
+(() => {
+  function updateTotal() {
+    let total = 0;
+    document.querySelectorAll(".pct-field").forEach(inp => {
+      const v = parseFloat(inp.value);
+      if (!isNaN(v)) total += v;
+    });
+    const el = document.getElementById("pct-total");
+    const ok = Math.abs(total - 100) <= 0.1;
+    el.textContent = total.toFixed(2) + "%";
+    el.className = ok ? "text-success" : "text-danger";
+    document.getElementById("pct-warning").style.display = ok ? "none" : "inline";
+  }
+  document.querySelectorAll(".pct-field").forEach(inp => inp.addEventListener("input", updateTotal));
+  updateTotal();
+})();
+</script>
 {% endblock %}

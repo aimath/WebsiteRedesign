@@ -8,7 +8,7 @@
         <h4 class="mb-0">Weekly Time Entry</h4>
         <small class="text-muted">
           {{ week.start_date|date:"F j, Y" }} – {{ week.end_date|date:"F j, Y" }}
-          &nbsp;·&nbsp; Week {{ week.week_number }} of {{ week.period.label }}
+          &nbsp;·&nbsp; Week {{ display_week_number }}
         </small>
       </div>
       <div class="d-flex align-items-center gap-2">

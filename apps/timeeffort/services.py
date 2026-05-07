@@ -142,7 +142,13 @@ def initialize_period_report(report):
     rollup = get_period_rollup(report.staff, report.covered_periods)
     total_hours = sum(r["total_hours"] for r in rollup)
 
-    # Replace all existing lines
+    # Preserve any descriptions the user already entered before replacing lines.
+    existing_descriptions = {
+        line.activity_name_snapshot: line.duties_description
+        for line in report.lines.all()
+        if line.duties_description
+    }
+
     report.lines.all().delete()
 
     for i, row in enumerate(rollup):
@@ -153,7 +159,7 @@ def initialize_period_report(report):
             classification_snapshot=row["classification"],
             total_hours=row["total_hours"],
             percentage=row["percentage"],
-            duties_description="",
+            duties_description=existing_descriptions.get(row["activity_name"], ""),
             sort_order=i,
         )
 

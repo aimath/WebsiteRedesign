@@ -210,6 +210,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.media",
                 "cms.context_processors.cms_settings",
+                "apps.timeeffort.context_processors.timeeffort_notifications",
             ],
         },
     },

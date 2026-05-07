@@ -20,4 +20,7 @@ urlpatterns = [
     path("download/director/<int:submission_id>/", views.download_director_pdf, name="download_director_pdf"),
     # CFO / admin portal
     path("reports/all/", views.all_reports, name="all_reports"),
+    # Supervisor queue
+    path("supervisor/", views.supervisor_queue, name="supervisor_queue"),
+    path("supervisor/<int:report_id>/", views.supervisor_review, name="supervisor_review"),
 ]
