@@ -105,7 +105,15 @@
                     </td>
                   {% endfor %}
                   <td class="center"><strong>{{ line.total_hours }}</strong></td>
-                  <td><span class="sig-line">&nbsp;</span></td>
+                  <td>
+                    {% if wd.timesheet and wd.timesheet.status == "SUBMITTED" %}
+                      <span style="font-style: italic; font-family: Georgia, serif; font-size: 11pt;">
+                        {{ report.employee_name_snapshot }}
+                      </span>
+                    {% else %}
+                      <span class="sig-line">&nbsp;</span>
+                    {% endif %}
+                  </td>
                 </tr>
               {% empty %}
                 <tr class="none-row">

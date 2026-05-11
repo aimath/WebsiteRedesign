@@ -1140,12 +1140,7 @@ class UpcomingProgramFilter(admin.SimpleListFilter):
             ("upcoming", "Upcoming"),
             ("past", "Past"),
             ("accepting", "Accepting Applications"),
-            ("all", "All"),
         ]
-
-    def value(self):
-        value = super().value()
-        return value if value is not None else "upcoming"
 
     def queryset(self, request, queryset):
         today = timezone.localdate()

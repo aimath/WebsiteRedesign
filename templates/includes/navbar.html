@@ -4,8 +4,8 @@ nav#main-navbar { background: #1f4467; box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
 nav#main-navbar .navbar-brand img { filter: brightness(0) invert(1); opacity: 0.9; }
 nav#main-navbar .nav-link { font-size: 0.9rem; font-weight: 600; letter-spacing: 0.2px; color: rgba(255,255,255,0.88) !important; padding: 0.65rem 0.85rem; }
 nav#main-navbar .nav-link:hover { color: #fff !important; }
-nav#main-navbar .navbar-toggler { border-color: rgba(255,255,255,0.4); }
-nav#main-navbar .navbar-toggler-icon { filter: invert(1); }
+nav#main-navbar .navbar-toggler { border: 2px solid rgba(255,255,255,0.75); border-radius: 6px; padding: 0.35rem 0.6rem; }
+nav#main-navbar .navbar-toggler-icon { filter: brightness(0) invert(1); opacity: 1; }
 nav#main-navbar .dropdown-menu { background: #17324c; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; box-shadow: 0 8px 28px rgba(0,0,0,0.3); padding: 0.5rem 0; min-width: 260px; }
 nav#main-navbar .dropdown-item { color: rgba(255,255,255,0.82); font-size: 0.865rem; padding: 0.42rem 1.25rem; }
 nav#main-navbar .dropdown-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
@@ -72,14 +72,14 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
                 <hr class="dropdown-divider">
               </li>
               <li>
-                <h6 class="dropdown-header">Past Programs</h6>
+                <a class="dropdown-item ps-4"
+                   href="{{ collaborative_url }}past-programs/">Past Programs</a>
               </li>
               <li>
                 <a class="dropdown-item ps-4" href="/frg/">FRG on L-functions</a>
               </li>
               <li>
-                <a class="dropdown-item ps-4"
-                   href="{{ collaborative_url }}past-programs/">UTMOST</a>
+                <a class="dropdown-item ps-4" href="https://utmost.aimath.org/">UTMOST</a>
               </li>
               <li>
                 <a class="dropdown-item ps-4"
@@ -113,6 +113,18 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
               </li>
               <li>
                 <a class="dropdown-item" href="{{ joyful_url }}affiliated-programs/">Affiliated Programs</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ joyful_url }}affiliated-programs/">Global Math Project</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ joyful_url }}affiliated-programs/">Alliance of Indigenous Math Circles</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ joyful_url }}affiliated-programs/">Math Monday</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ joyful_url }}affiliated-programs/">MATCH</a>
               </li>
             </ul>
           </li>
@@ -173,7 +185,7 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
                 <a href="{{ visiting_url }}map-directions/" class="dropdown-item">Map &amp; Directions</a>
               </li>
               <li>
-                <a class="dropdown-item" href="{{ visiting_url }}local-information/">Local Information</a>
+                <a class="dropdown-item" href="{{ visiting_url }}around-pasadena/">Around Pasadena</a>
               </li>
               <li>
                 <a class="dropdown-item" href="{{ visiting_url }}facilities/">The AIM Facility in Pasadena</a>
@@ -202,7 +214,7 @@ nav#main-navbar .nav-item.dropdown:hover > .dropdown-menu { display: block; }
                aria-expanded="false">News</a>
             <ul class="dropdown-menu">
               <li>
-                <a href="" class="dropdown-item">Upcoming events</a>
+                <a href="/events/" class="dropdown-item">Upcoming Events</a>
               </li>
               <li>
                 <a class="dropdown-item" href="{{ news_url }}">In the Media</a>
