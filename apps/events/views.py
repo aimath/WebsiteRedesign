@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.db.models.functions import ExtractYear
@@ -7,7 +9,7 @@ from apps.events.models import Event
 def event_list(request):
     """List all published events, separated into upcoming and past."""
     upcoming = Event.objects.upcoming()
-    past = Event.objects.past().annotate(year=ExtractYear("start"))
+    past = Event.objects.past().annotate(year=ExtractYear("start")).select_related()
 
     return render(
         request,
@@ -36,7 +38,7 @@ def event_ical(request, slug):
 
     # Format dates for iCal
     start_str = event.start.strftime("%Y%m%dT%H%M%SZ")
-    end_dt = event.end or event.start
+    end_dt = event.end or (event.start + timedelta(hours=1))
     end_str = end_dt.strftime("%Y%m%dT%H%M%SZ")
 
     # Build iCal content

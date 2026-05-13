@@ -15,7 +15,10 @@ class EventManager(models.Manager):
         return self.filter(status=Event.Status.PUBLISHED)
 
     def upcoming(self):
-        return self.published().filter(start__gte=timezone.now()).order_by("start")
+        now = timezone.now()
+        return self.published().filter(
+            models.Q(end__gte=now) | models.Q(end__isnull=True, start__gte=now)
+        ).order_by("start")
 
     def past(self):
         return self.published().filter(start__lt=timezone.now()).order_by("-start")
@@ -182,9 +185,10 @@ class Event(models.Model):
     @property
     def google_calendar_url(self):
         """Generate 'Add to Google Calendar' link."""
-        start_str = self.start.strftime("%Y%m%dT%H%M%S")
-        end_dt = self.end or self.start
-        end_str = end_dt.strftime("%Y%m%dT%H%M%S")
+        from datetime import timedelta
+        start_str = self.start.strftime("%Y%m%dT%H%M%SZ")
+        end_dt = self.end or (self.start + timedelta(hours=1))
+        end_str = end_dt.strftime("%Y%m%dT%H%M%SZ")
 
         params = {
             "action": "TEMPLATE",
