@@ -1,0 +1,16 @@
+{% comment %}Sidebar navigation for the FRG section. Auto-detects active page.{% endcomment %}
+{% load cms_tags %}
+<a href="{% page_url 'frg' %}"
+   class="{% if request.path == '/frg/' %}active{% endif %}">Home</a>
+<a href="{% page_url 'frg' %}papers/"
+   class="{% if request.path == '/frg/papers/' %}active{% endif %}">Papers</a>
+<a href="{% page_url 'frg' %}activities/"
+   class="{% if request.path == '/frg/activities/' %}active{% endif %}">Activities</a>
+<a href="https://vimeo.com/showcase/7398886"
+   target="_blank"
+   rel="noopener">Videos</a>
+<a href="{% page_url 'frg' %}resources/"
+   class="{% if request.path == '/frg/resources/' %}active{% endif %}">Resources</a>
+<a href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1854398"
+   target="_blank"
+   rel="noopener">NSF Grant</a>

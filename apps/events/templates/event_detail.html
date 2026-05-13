@@ -1,161 +1,301 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}
-    {{ event.title }} | AIM Events
-{% endblock title %}
+
+{% block title %}{{ event.title }} | AIM Events{% endblock title %}
+
 {% block content %}
-    <div class="container py-4">
-        <!-- Breadcrumb -->
-        <nav aria-label="breadcrumb" class="mb-3">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item">
-                    <a href="{% url 'events:event-list' %}">Events</a>
-                </li>
-                <li class="breadcrumb-item active">{{ event.title|truncatewords:5 }}</li>
-            </ol>
-        </nav>
-        <!-- Hero Image -->
-        {% if event.image %}
-            <div class="mb-4">
-                <img src="{{ event.image.url }}"
-                     class="img-fluid rounded w-100"
-                     style="max-height: 400px;
-                            object-fit: contain"
-                     alt="{{ event.title }}">
-            </div>
-        {% endif %}
-        <div class="row">
-            <!-- Main Content -->
-            <div class="col-lg-8">
-                <!-- Status badges -->
-                <div class="mb-2">
-                    <span class="badge bg-secondary">{{ event.get_event_type_display }}</span>
-                    {% if event.is_online %}<span class="badge bg-primary">Online Event</span>{% endif %}
-                    {% if event.status == 'cancelled' %}
-                        <span class="badge bg-danger">Cancelled</span>
-                    {% elif event.status == 'postponed' %}
-                        <span class="badge bg-warning text-dark">Postponed</span>
-                    {% endif %}
-                </div>
-                <!-- Title & Date -->
-                <p class="text-muted mb-1">{{ event.start|date:"l, F j, Y" }}</p>
-                <h1 class="mb-3">{{ event.title }}</h1>
-                <p class="mb-4">
-                    By <strong>American Institute of Mathematics</strong>
-                </p>
-                {% if event.short_summary %}<p class="lead">{{ event.short_summary }}</p>{% endif %}
-                <!-- Location Section -->
-                <div class="mb-4">
-                    <h5>Location</h5>
-                    {% if event.is_online %}
-                        <p class="mb-2">
-                            <span class="text-primary">This is an online event.</span>
-                            {% if event.online_url %}
-                                <br>
-                                <a href="{{ event.online_url }}"
-                                   target="_blank"
-                                   class="btn btn-outline-primary btn-sm mt-2">Join Online Event</a>
-                            {% endif %}
-                        </p>
-                    {% else %}
-                        {% if event.venue_name %}
-                            <p class="mb-1">
-                                <strong>{{ event.venue_name }}</strong>
-                            </p>
-                        {% endif %}
-                        <p class="text-muted mb-2">{{ event.full_address }}</p>
-                        {% if event.maps_url %}
-                            <a href="{{ event.maps_url }}"
-                               target="_blank"
-                               class="btn btn-outline-secondary btn-sm">Get Directions</a>
-                        {% endif %}
-                    {% endif %}
-                </div>
-                <!-- Description -->
-                {% if event.description_html %}
-                    <div class="mb-4">
-                        <h5>About This Event</h5>
-                        <div class="event-description">{{ event.description_html|safe }}</div>
-                    </div>
-                {% endif %}
-            </div>
-            <!-- Sidebar -->
-            <div class="col-lg-4">
-                <!-- Ticket Card -->
-                <div class="card shadow-sm mb-3 sticky-top" style="top: 20px;">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <span class="h5 mb-0">{{ event.price_display }}</span>
-                                {% if event.capacity %}
-                                    <br>
-                                    <small class="text-muted">{{ event.capacity }} spots available</small>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% if event.status == 'cancelled' %}
-                            <button class="btn btn-secondary w-100" disabled>Event Cancelled</button>
-                        {% elif event.status == 'postponed' %}
-                            <button class="btn btn-warning w-100" disabled>Event Postponed</button>
-                        {% elif event.is_past %}
-                            <button class="btn btn-secondary w-100" disabled>Event Ended</button>
-                        {% elif event.external_ticket_url %}
-                            <a href="{{ event.external_ticket_url }}"
-                               target="_blank"
-                               class="btn btn-primary w-100">Get Tickets</a>
-                        {% elif event.registration_required %}
-                            <a href="#register" class="btn btn-primary w-100">Register</a>
-                        {% else %}
-                            <span class="text-muted">No registration required</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <!-- Date & Time Card -->
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <h6 class="card-title">Date and Time</h6>
-                        <p class="mb-2">
-                            <strong>{{ event.start|date:"l, F j, Y" }}</strong>
-                            <br>
-                            {{ event.start|date:"g:i A" }}
-                            {% if event.end %}- {{ event.end|date:"g:i A" }}{% endif %}
-                        </p>
-                        <!-- Add to Calendar -->
-                        <div class="dropdown">
-                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle"
-                                    type="button"
-                                    data-bs-toggle="dropdown"
-                                    aria-expanded="false">Add to Calendar</button>
-                            <ul class="dropdown-menu">
-                                <li>
-                                    <a class="dropdown-item"
-                                       href="{{ event.google_calendar_url }}"
-                                       target="_blank">Google Calendar</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ event.ical_url }}">iCal / Outlook</a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <!-- Share Card -->
-                <div class="card">
-                    <div class="card-body">
-                        <h6 class="card-title">Share This Event</h6>
-                        <div class="d-flex gap-2">
-                            <a href="https://twitter.com/intent/tweet?url={{ request.build_absolute_uri }}&text={{ event.title|urlencode }}"
-                               target="_blank"
-                               class="btn btn-outline-secondary btn-sm">Twitter</a>
-                            <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}"
-                               target="_blank"
-                               class="btn btn-outline-secondary btn-sm">Facebook</a>
-                            <a href="mailto:?subject={{ event.title|urlencode }}&body=Check out this event: {{ request.build_absolute_uri }}"
-                               class="btn btn-outline-secondary btn-sm">Email</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<style>
+  /* ── Event detail page ── */
+  .evd-hero {
+    width: 100%;
+    max-height: 380px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 1.75rem;
+    display: block;
+  }
+  .evd-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    margin-right: 0.35rem;
+    margin-bottom: 0.75rem;
+  }
+  .evd-badge-type  { background: #e9ecef; color: #495057; }
+  .evd-badge-online { background: #e8f0fe; color: #1a56c4; }
+  .evd-badge-cancelled { background: #f8d7da; color: #842029; }
+  .evd-badge-postponed { background: #fff3cd; color: #7c5a00; }
+
+  .evd-date-line {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #578bbf;
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .evd-title { margin-bottom: 1rem; }
+  .evd-lead { font-size: 1.05rem; color: #495057; line-height: 1.7; margin-bottom: 1.75rem; }
+
+  /* Description */
+  .evd-description { line-height: 1.75; color: #333; }
+  .evd-description h2, .evd-description h3 { margin-top: 1.5rem; }
+
+  /* Sidebar cards */
+  .evd-sidebar-card {
+    background: #fff;
+    border: 1px solid #dde5ef;
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .evd-sidebar-card-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8a9ab0;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Registration card */
+  .evd-reg-card {
+    background: #fff;
+    border: 1px solid #dde5ef;
+    border-top: 4px solid #1f4467;
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    position: sticky;
+    top: 90px; /* clears navbar */
+  }
+  .evd-price {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #1f4467;
+    margin-bottom: 0.2rem;
+  }
+  .evd-capacity-note {
+    font-size: 0.75rem;
+    color: #8a9ab0;
+    margin-bottom: 1rem;
+  }
+  .evd-reg-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .evd-reg-btn:hover { opacity: 0.88; }
+  .evd-reg-btn.primary { background: #1f4467; color: #fff; }
+  .evd-reg-btn.secondary { background: #e9ecef; color: #495057; cursor: default; }
+  .evd-reg-btn.warning { background: #ffc107; color: #333; cursor: default; }
+  .evd-no-reg { font-size: 0.82rem; color: #8a9ab0; text-align: center; }
+
+  /* Date/time card */
+  .evd-datetime-line {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #1a2a3a;
+    margin-bottom: 0.2rem;
+  }
+  .evd-time-line {
+    font-size: 0.85rem;
+    color: #495057;
+    margin-bottom: 1rem;
+  }
+  .evd-cal-links { display: flex; flex-direction: column; gap: 0.4rem; }
+  .evd-cal-link {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1f4467;
+    text-decoration: none;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid #c8d8e8;
+    border-radius: 6px;
+    text-align: center;
+    transition: background 0.12s;
+  }
+  .evd-cal-link:hover { background: #f0f5fb; color: #1f4467; border-color: #1f4467; }
+
+  /* Location card */
+  .evd-location-name { font-size: 0.92rem; font-weight: 700; color: #1a2a3a; margin-bottom: 0.15rem; }
+  .evd-location-address { font-size: 0.82rem; color: #6c757d; margin-bottom: 0.75rem; line-height: 1.5; }
+  .evd-directions-link {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #1f4467;
+    text-decoration: none;
+    padding: 0.28rem 0.65rem;
+    border: 1.5px solid #1f4467;
+    border-radius: 6px;
+    transition: background 0.12s, color 0.12s;
+  }
+  .evd-directions-link:hover { background: #1f4467; color: #fff; }
+
+  /* Share card */
+  .evd-share-links { display: flex; flex-direction: column; gap: 0.4rem; }
+  .evd-share-link {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #495057;
+    text-decoration: none;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    text-align: center;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .evd-share-link:hover { background: #f8f9fa; border-color: #adb5bd; color: #212529; }
+
+  @media (max-width: 991px) {
+    .evd-reg-card { position: static; }
+  }
+</style>
+
+<div class="container py-4">
+
+  {# Breadcrumb #}
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'events:event-list' %}">Events</a></li>
+      <li class="breadcrumb-item active">{{ event.title|truncatewords:6 }}</li>
+    </ol>
+  </nav>
+
+  {# Hero image #}
+  {% if event.image %}
+    <img src="{{ event.image.url }}" class="evd-hero" alt="{{ event.title }}">
+  {% endif %}
+
+  <div class="row g-5">
+
+    {# ── Main content ── #}
+    <div class="col-lg-8">
+
+      {# Badges #}
+      <div>
+        <span class="evd-badge evd-badge-type">{{ event.get_event_type_display }}</span>
+        {% if event.is_online %}<span class="evd-badge evd-badge-online">Online</span>{% endif %}
+        {% if event.status == 'cancelled' %}<span class="evd-badge evd-badge-cancelled">Cancelled</span>{% endif %}
+        {% if event.status == 'postponed' %}<span class="evd-badge evd-badge-postponed">Postponed</span>{% endif %}
+      </div>
+
+      {# Date + Title #}
+      <div class="evd-date-line">{{ event.start|date:"l, F j, Y" }}</div>
+      <h1 class="evd-title">{{ event.title }}</h1>
+
+      {% if event.short_summary %}
+        <p class="evd-lead">{{ event.short_summary }}</p>
+      {% endif %}
+
+      {# Location (in-line for mobile readers) #}
+      {% if event.is_online %}
+        <div class="mb-4">
+          <strong>Online Event</strong>
+          {% if event.online_url %}
+            &mdash; <a href="{{ event.online_url }}" target="_blank" rel="noopener noreferrer">Join here</a>
+          {% endif %}
         </div>
+      {% elif event.venue_name or event.city %}
+        <div class="mb-4" style="font-size:0.9rem;color:#495057;">
+          {% if event.venue_name %}<strong>{{ event.venue_name }}</strong>{% if event.city %}, {% endif %}{% endif %}
+          {% if event.city %}{{ event.city }}{% if event.region %}, {{ event.region }}{% endif %}{% endif %}
+          {% if event.maps_url %}
+            &nbsp;<a href="{{ event.maps_url }}" target="_blank" rel="noopener noreferrer"
+               style="font-size:0.8rem;font-weight:600;">↗ Map</a>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {# Description #}
+      {% if event.description_html %}
+        <div class="evd-description">
+          {{ event.description_html|safe }}
+        </div>
+      {% endif %}
+
     </div>
+
+    {# ── Sidebar ── #}
+    <div class="col-lg-4">
+
+      {# Registration / Ticket card #}
+      <div class="evd-reg-card">
+        <div class="evd-price">{{ event.price_display }}</div>
+        {% if event.capacity %}
+          <div class="evd-capacity-note">{{ event.capacity }}-person capacity</div>
+        {% endif %}
+
+        {% if event.status == 'cancelled' %}
+          <button class="evd-reg-btn secondary" disabled>Event Cancelled</button>
+        {% elif event.status == 'postponed' %}
+          <button class="evd-reg-btn warning" disabled>Event Postponed</button>
+        {% elif event.is_past %}
+          <button class="evd-reg-btn secondary" disabled>Event Ended</button>
+        {% elif event.external_ticket_url %}
+          <a href="{{ event.external_ticket_url }}" target="_blank" rel="noopener noreferrer"
+             class="evd-reg-btn primary">Get Tickets</a>
+        {% elif event.registration_required %}
+          <a href="#register" class="evd-reg-btn primary">Register</a>
+        {% else %}
+          <div class="evd-no-reg">No registration required</div>
+        {% endif %}
+      </div>
+
+      {# Date & Time card #}
+      <div class="evd-sidebar-card">
+        <div class="evd-sidebar-card-title">Date &amp; Time</div>
+        <div class="evd-datetime-line">{{ event.start|date:"l, F j, Y" }}</div>
+        <div class="evd-time-line">
+          {{ event.start|date:"g:i A" }}{% if event.end %} &ndash; {{ event.end|date:"g:i A" }}{% endif %} PT
+        </div>
+        <div class="evd-cal-links">
+          <a href="{{ event.google_calendar_url }}" target="_blank" rel="noopener noreferrer"
+             class="evd-cal-link">+ Google Calendar</a>
+        </div>
+      </div>
+
+      {# Location card (desktop) #}
+      {% if event.is_online and event.online_url %}
+        <div class="evd-sidebar-card">
+          <div class="evd-sidebar-card-title">Online Event</div>
+          <a href="{{ event.online_url }}" target="_blank" rel="noopener noreferrer"
+             class="evd-directions-link">Join Meeting →</a>
+        </div>
+      {% elif event.venue_name or event.city %}
+        <div class="evd-sidebar-card">
+          <div class="evd-sidebar-card-title">Location</div>
+          {% if event.venue_name %}<div class="evd-location-name">{{ event.venue_name }}</div>{% endif %}
+          <div class="evd-location-address">{{ event.full_address }}</div>
+          {% if event.maps_url %}
+            <a href="{{ event.maps_url }}" target="_blank" rel="noopener noreferrer"
+               class="evd-directions-link">Get Directions ↗</a>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {# Share card #}
+      <div class="evd-sidebar-card">
+        <div class="evd-sidebar-card-title">Share</div>
+        <div class="evd-share-links">
+          <a href="mailto:?subject={{ event.title|urlencode }}&body=Check out this event: {{ request.build_absolute_uri }}"
+             class="evd-share-link">Email</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 {% endblock content %}

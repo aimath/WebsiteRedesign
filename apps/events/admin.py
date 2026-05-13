@@ -16,10 +16,19 @@ class EventAdmin(admin.ModelAdmin):
     ]
     list_filter = ["status", "event_type", "is_online", "is_free", "start"]
     search_fields = ["title", "short_summary", "venue_name", "city"]
-    prepopulated_fields = {"slug": ["title"]}
     date_hierarchy = "start"
     ordering = ["-start"]
     readonly_fields = ["created_at", "updated_at"]
+
+    def get_prepopulated_fields(self, request, obj=None):
+        if obj:
+            return {}
+        return {"slug": ["title"]}
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return ["slug", "created_at", "updated_at"]
+        return ["created_at", "updated_at"]
 
     fieldsets = (
         (

@@ -120,7 +120,15 @@ INSTALLED_APPS = [
     "filer",
 ]
 
-TEXT_EDITOR = "djangocms_text.contrib.text_ckeditor4.ckeditor4"
+# TEXT_EDITOR = "djangocms_text.contrib.text_ckeditor4.ckeditor4"
+DJANGOCMS_LINK_ALLOWED_LINK_TYPES = [
+    "internal_link",  # Pages and other models
+    "external_link",  # Hand-typed URLs
+    "file_link",  # Files from django-filer
+    "tel",  # Phone numbers as external links using the tel: scheme
+    "mailto",  # Email addresses as external links using the mailto: scheme
+    "anchor",  # Anchors in the current page as external links using #
+]
 # CKEDITOR_CONFIGS = {
 #     "default": {
 #         "toolbar": "Custom",
@@ -331,6 +339,7 @@ CMS_TEMPLATES = [
     ),
     # === VISITING SECTION ===
     ("cms_templates/visiting/landing.html", "Visiting - Overview"),
+    ("cms_templates/visiting/map_directions.html", "Visiting - Map & Directions"),
     ("cms_templates/visiting/code_of_conduct.html", "Visiting - Code of Conduct"),
     ("cms_templates/visiting/local_information.html", "Visiting - Local Information"),
     ("cms_templates/visiting/travel_guidelines.html", "Visiting - Travel Guidelines"),
@@ -360,6 +369,7 @@ CMS_TEMPLATES = [
     # === OTHER ===
     ("cms_templates/news.html", "News Template"),
     ("FRG/frg-resources.html", "FRG Resources"),
+    ("FRG/pdf_list.html", "FRG Resources list"),
     ("FRG/frg-activities.html", "FRG Activities"),
     ("FRG/frg-landing.html", "FRG Landing Page"),
     ("FRG/frg-papers.html", "FRG Papers"),

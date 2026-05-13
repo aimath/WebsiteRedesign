@@ -1,6 +1,30 @@
 {% extends "base.html" %}
 {% load cms_tags sekizai_tags %}
 {% load static %}
+
+{% block title %}FRG Resources{% endblock %}
+
 {% block content %}
-    <div class="container">{% placeholder "pdf_list" %}</div>
+  <div class="header-banner">
+    <div class="container py-3">
+      <p class="section-label mb-1">Past Programs</p>
+      <h1 class="h3 mb-0">FRG Resources</h1>
+    </div>
+  </div>
+  <div class="container py-4">
+    <div class="row g-4">
+      <div class="col-lg-3">
+        <nav class="section-sidebar">
+          <div class="section-nav">
+            {% include "FRG/_sidebar.html" %}
+          </div>
+        </nav>
+      </div>
+      <div class="col-lg-9">
+        <div class="section-content">
+          {% placeholder "pdf_list" %}
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock content %}
