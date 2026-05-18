@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+    <p>
+        <a href="{% url 'admin:programs_program_manage_enrollments' program.id %}">&larr; Back to Manage Enrollments</a>
+    </p>
+    <hr>
+    <h2>Sending to {{ enrollments.count }} participant(s)</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+            <tr style="background: #f1f1f1;">
+                <th style="padding: 8px; text-align: left;">Name</th>
+                <th style="padding: 8px; text-align: left;">Email</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in enrollments %}
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 8px;">{{ e.first_name }} {{ e.last_name }}</td>
+                    <td style="padding: 8px;">{{ e.email_snap }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="help" style="margin-bottom: 16px;">
+        Available placeholders: <code>{first_name}</code>, <code>{invite_url}</code>,
+        <code>{accept_url}</code>, <code>{decline_url}</code> — each is personalized per recipient.
+    </p>
+    <form method="post" action="{% url 'admin:programs_program_send_enrollment_invites' program.id %}">
+        {% csrf_token %}
+        {% for id in enrollment_ids %}
+            <input type="hidden" name="enrollment_ids" value="{{ id }}">
+        {% endfor %}
+        <div style="margin-bottom: 16px;">
+            <label for="subject" style="display: block; font-weight: bold; margin-bottom: 4px;">Subject</label>
+            <input type="text" id="subject" name="subject" value="{{ default_subject }}"
+                   style="width: 100%; padding: 6px; font-size: 14px; box-sizing: border-box;">
+        </div>
+        <div style="margin-bottom: 20px;">
+            <label for="body" style="display: block; font-weight: bold; margin-bottom: 4px;">Body</label>
+            <textarea id="body" name="body" rows="18"
+                      style="width: 100%; font-family: monospace; font-size: 13px; padding: 6px; box-sizing: border-box;">{{ default_body }}</textarea>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <input type="submit" value="Send Invitations" class="default">
+            <a href="{% url 'admin:programs_program_manage_enrollments' program.id %}"
+               style="padding: 6px 12px; color: #666;">Cancel</a>
+        </div>
+    </form>
+{% endblock %}

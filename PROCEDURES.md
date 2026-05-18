@@ -252,78 +252,90 @@ This renders a compact list of the next 3 upcoming events.
 
 ## Enrollment Management
 
-### Bulk Import Enrollments from CSV
+All invitations are managed through a single workflow: import a list, then choose how to send.
 
-Use this when you receive a list of participants from program organizers.
+**Location:** Admin → Programs → [Select Program] → ⚙️ Manage (in the Actions column)
 
-**Location:** Admin → Programs → [Select Program] → Actions → "Manage" (or go to program detail and click "Manage Enrollments")
+---
 
-**Steps:**
+### Step 1 — Import Participants from CSV
 
-1. Go to the program's "Manage Enrollments" page
-2. In the "Import Enrollments from CSV" section, paste CSV data with headers:
+1. Go to the program's Manage Enrollments page
+2. Paste CSV data with headers:
    ```
    first_name,last_name,email,funding
    John,Smith,john@example.com,full
    Jane,Doe,jane@example.com,partial
    ```
-3. Click "Import Enrollments"
-4. Imported enrollments appear in the "Pending Invites" section
+3. Click **Import Enrollments**
+4. Imported entries appear in the **Pending Invites** section
 
 **Notes:**
-- Duplicate emails (already enrolled) are automatically skipped
+- Duplicate emails are automatically skipped
 - The `funding` column is optional
-- Email addresses are normalized to lowercase
+- Emails are normalized to lowercase
 
 ---
 
-### Sending Invitation Emails
+### Step 2 — Send Invitations
 
-After importing enrollments, send invitation emails so participants can accept/decline.
+From the Pending Invites section, select enrollments and choose one of three actions:
 
-**Steps:**
+#### Option A — Send via the built-in email system
 
-1. On the "Manage Enrollments" page, find the "Pending Invites" section
-2. Check the boxes next to enrollments you want to invite (or use "Select All")
-3. Click "Send Invites to Selected"
-4. Emails are sent with accept/decline links
-5. Sent invitations move to "Invited, Awaiting Response" section
+1. Check the boxes next to enrollments you want to send to
+2. Click **Send Invites to Selected**
+3. A compose page opens — edit the subject and body as needed
+4. Available placeholders: `{first_name}`, `{invite_url}`, `{accept_url}`, `{decline_url}`
+5. Click **Send Invitations**
+6. Sent invitations move to the **Invited, Awaiting Response** section
 
-**What recipients see:**
-- Email with program title and dates
-- "Accept Invitation" button (green)
-- "Decline" button (gray)
-- They must sign in with ORCID to accept
+#### Option B — Send via your own email tool (Gmail, Mailchimp, etc.)
+
+1. Click **Export Invite Links CSV** — downloads a file with each person's name, email, and personalized invite link
+2. Send the emails manually using your preferred tool, including the invite link from the CSV
+3. Return to Manage Enrollments, select the enrollments you sent to
+4. Click **Mark as Sent (External)** — moves them to Awaiting Response so tracking stays accurate
+
+#### Option C — A mix of both
+
+You can export the CSV for some participants and send internally for others. Use the checkboxes to select only the rows you're acting on at each step.
+
+---
+
+### Cancelling an Invite
+
+- **Pending (not yet sent):** Click the **Cancel** button on that row — the enrollment record is deleted
+- **Awaiting response (sent):** Click **Cancel** — the record is deleted and the invite link in their email will stop working
+- **Cannot cancel** once someone has accepted and linked their account
 
 ---
 
 ### Enrollment Status Tracking
 
-The Manage Enrollments page shows three sections:
-
 | Section | Meaning |
 |---------|---------|
 | **Pending Invites** | Imported but no email sent yet |
-| **Invited, Awaiting Response** | Email sent, waiting for accept/decline |
-| **Confirmed/Linked** | Linked to a person account (accepted) |
+| **Invited, Awaiting Response** | Email sent (internally or marked as sent externally), waiting for accept/decline |
+| **Confirmed/Linked** | Linked to a person account |
 
 ---
 
-### When Someone Accepts an Invitation
+### When Someone Accepts
 
-1. Recipient clicks "Accept" link in email
-2. They're prompted to sign in with ORCID (if not already)
+1. Recipient clicks the invite link in their email
+2. They're prompted to sign in with ORCID (if not already signed in)
 3. Their enrollment is linked to their person account
 4. They're redirected to enter logistics (travel dates, phone, etc.)
-5. Enrollment moves to "Confirmed/Linked" section in admin
+5. Enrollment moves to **Confirmed/Linked**
 
 ---
 
 ### When Someone Declines
 
-1. Recipient clicks "Decline" link in email
+1. Recipient clicks the decline link
 2. They see a confirmation page
-3. Enrollment is marked as declined (visible in applicants list)
+3. Enrollment is marked as declined (visible in the Applicants view)
 
 ---
 

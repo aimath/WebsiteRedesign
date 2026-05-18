@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% load static %}
-
-{% block title %}{{ event.title }} | AIM Events{% endblock title %}
-
+{% block title %}
+  {{ event.title }} | AIM Events
+{% endblock title %}
 {% block content %}
-<style>
+  <style>
   /* ── Event detail page ── */
   .evd-hero {
     width: 100%;
     max-height: 380px;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: 10px;
     margin-bottom: 1.75rem;
     display: block;
@@ -162,140 +162,135 @@
   @media (max-width: 991px) {
     .evd-reg-card { position: static; }
   }
-</style>
-
-<div class="container py-4">
-
-  {# Breadcrumb #}
-  <nav aria-label="breadcrumb" class="mb-3">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{% url 'events:event-list' %}">Events</a></li>
-      <li class="breadcrumb-item active">{{ event.title|truncatewords:6 }}</li>
-    </ol>
-  </nav>
-
-  {# Hero image #}
-  {% if event.image %}
-    <img src="{{ event.image.url }}" class="evd-hero" alt="{{ event.title }}">
-  {% endif %}
-
-  <div class="row g-5">
-
-    {# ── Main content ── #}
-    <div class="col-lg-8">
-
-      {# Badges #}
-      <div>
-        <span class="evd-badge evd-badge-type">{{ event.get_event_type_display }}</span>
-        {% if event.is_online %}<span class="evd-badge evd-badge-online">Online</span>{% endif %}
-        {% if event.status == 'cancelled' %}<span class="evd-badge evd-badge-cancelled">Cancelled</span>{% endif %}
-        {% if event.status == 'postponed' %}<span class="evd-badge evd-badge-postponed">Postponed</span>{% endif %}
-      </div>
-
-      {# Date + Title #}
-      <div class="evd-date-line">{{ event.start|date:"l, F j, Y" }}</div>
-      <h1 class="evd-title">{{ event.title }}</h1>
-
-      {% if event.short_summary %}
-        <p class="evd-lead">{{ event.short_summary }}</p>
-      {% endif %}
-
-      {# Location (in-line for mobile readers) #}
-      {% if event.is_online %}
-        <div class="mb-4">
-          <strong>Online Event</strong>
-          {% if event.online_url %}
-            &mdash; <a href="{{ event.online_url }}" target="_blank" rel="noopener noreferrer">Join here</a>
-          {% endif %}
+  </style>
+  <div class="container py-4">
+    {# Breadcrumb #}
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="{% url 'events:event-list' %}">Events</a>
+        </li>
+        <li class="breadcrumb-item active">{{ event.title|truncatewords:6 }}</li>
+      </ol>
+    </nav>
+    {# Hero image #}
+    {% if event.image %}<img src="{{ event.image.url }}" class="evd-hero" alt="{{ event.title }}">{% endif %}
+    <div class="row g-5">
+      {# ── Main content ── #}
+      <div class="col-lg-8">
+        {# Badges #}
+        <div>
+          <span class="evd-badge evd-badge-type">{{ event.get_event_type_display }}</span>
+          {% if event.is_online %}<span class="evd-badge evd-badge-online">Online</span>{% endif %}
+          {% if event.status == 'cancelled' %}<span class="evd-badge evd-badge-cancelled">Cancelled</span>{% endif %}
+          {% if event.status == 'postponed' %}<span class="evd-badge evd-badge-postponed">Postponed</span>{% endif %}
         </div>
-      {% elif event.venue_name or event.city %}
-        <div class="mb-4" style="font-size:0.9rem;color:#495057;">
-          {% if event.venue_name %}<strong>{{ event.venue_name }}</strong>{% if event.city %}, {% endif %}{% endif %}
-          {% if event.city %}{{ event.city }}{% if event.region %}, {{ event.region }}{% endif %}{% endif %}
-          {% if event.maps_url %}
-            &nbsp;<a href="{{ event.maps_url }}" target="_blank" rel="noopener noreferrer"
-               style="font-size:0.8rem;font-weight:600;">↗ Map</a>
-          {% endif %}
-        </div>
-      {% endif %}
-
-      {# Description #}
-      {% if event.description_html %}
-        <div class="evd-description">
-          {{ event.description_html|safe }}
-        </div>
-      {% endif %}
-
-    </div>
-
-    {# ── Sidebar ── #}
-    <div class="col-lg-4">
-
-      {# Registration / Ticket card #}
-      <div class="evd-reg-card">
-        <div class="evd-price">{{ event.price_display }}</div>
-        {% if event.capacity %}
-          <div class="evd-capacity-note">{{ event.capacity }}-person capacity</div>
+        {# Date + Title #}
+        <div class="evd-date-line">{{ event.start|date:"l, F j, Y" }}</div>
+        <h1 class="evd-title">{{ event.title }}</h1>
+        {% if event.short_summary %}<p class="evd-lead">{{ event.short_summary }}</p>{% endif %}
+        {# Location (in-line for mobile readers) #}
+        {% if event.is_online %}
+          <div class="mb-4">
+            <strong>Online Event</strong>
+            {% if event.online_url %}
+              &mdash; <a href="{{ event.online_url }}"
+    target="_blank"
+    rel="noopener noreferrer">Join here</a>
+            {% endif %}
+          </div>
+        {% elif event.venue_name or event.city %}
+          <div class="mb-4" style="font-size:0.9rem;color:#495057;">
+            {% if event.venue_name %}
+              <strong>{{ event.venue_name }}</strong>
+              {% if event.city %},{% endif %}
+            {% endif %}
+            {% if event.city %}
+              {{ event.city }}
+              {% if event.region %}, {{ event.region }}{% endif %}
+            {% endif %}
+            {% if event.maps_url %}
+              &nbsp;<a href="{{ event.maps_url }}"
+   target="_blank"
+   rel="noopener noreferrer"
+   style="font-size:0.8rem;
+          font-weight:600">↗ Map</a>
+            {% endif %}
+          </div>
         {% endif %}
-
-        {% if event.status == 'cancelled' %}
-          <button class="evd-reg-btn secondary" disabled>Event Cancelled</button>
-        {% elif event.status == 'postponed' %}
-          <button class="evd-reg-btn warning" disabled>Event Postponed</button>
-        {% elif event.is_past %}
-          <button class="evd-reg-btn secondary" disabled>Event Ended</button>
-        {% elif event.external_ticket_url %}
-          <a href="{{ event.external_ticket_url }}" target="_blank" rel="noopener noreferrer"
-             class="evd-reg-btn primary">Get Tickets</a>
-        {% elif event.registration_required %}
-          <a href="#register" class="evd-reg-btn primary">Register</a>
-        {% else %}
-          <div class="evd-no-reg">No registration required</div>
-        {% endif %}
+        {# Description #}
+        {% if event.description_html %}<div class="evd-description">{{ event.description_html|safe }}</div>{% endif %}
       </div>
-
-      {# Date & Time card #}
-      <div class="evd-sidebar-card">
-        <div class="evd-sidebar-card-title">Date &amp; Time</div>
-        <div class="evd-datetime-line">{{ event.start|date:"l, F j, Y" }}</div>
-        <div class="evd-time-line">
-          {{ event.start|date:"g:i A" }}{% if event.end %} &ndash; {{ event.end|date:"g:i A" }}{% endif %} PT
-        </div>
-        <div class="evd-cal-links">
-          <a href="{{ event.google_calendar_url }}" target="_blank" rel="noopener noreferrer"
-             class="evd-cal-link">+ Google Calendar</a>
-        </div>
-      </div>
-
-      {# Location card (desktop) #}
-      {% if event.is_online and event.online_url %}
-        <div class="evd-sidebar-card">
-          <div class="evd-sidebar-card-title">Online Event</div>
-          <a href="{{ event.online_url }}" target="_blank" rel="noopener noreferrer"
-             class="evd-directions-link">Join Meeting →</a>
-        </div>
-      {% elif event.venue_name or event.city %}
-        <div class="evd-sidebar-card">
-          <div class="evd-sidebar-card-title">Location</div>
-          {% if event.venue_name %}<div class="evd-location-name">{{ event.venue_name }}</div>{% endif %}
-          <div class="evd-location-address">{{ event.full_address }}</div>
-          {% if event.maps_url %}
-            <a href="{{ event.maps_url }}" target="_blank" rel="noopener noreferrer"
-               class="evd-directions-link">Get Directions ↗</a>
+      {# ── Sidebar ── #}
+      <div class="col-lg-4">
+        {# Registration / Ticket card #}
+        <div class="evd-reg-card">
+          <div class="evd-price">{{ event.price_display }}</div>
+          {% if event.capacity %}<div class="evd-capacity-note">{{ event.capacity }}-person capacity</div>{% endif %}
+          {% if event.status == 'cancelled' %}
+            <button class="evd-reg-btn secondary" disabled>Event Cancelled</button>
+          {% elif event.status == 'postponed' %}
+            <button class="evd-reg-btn warning" disabled>Event Postponed</button>
+          {% elif event.is_past %}
+            <button class="evd-reg-btn secondary" disabled>Event Ended</button>
+          {% elif event.external_ticket_url %}
+            <a href="{{ event.external_ticket_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="evd-reg-btn primary">Get Tickets</a>
+          {% elif event.registration_required %}
+            <a href="#register" class="evd-reg-btn primary">Register</a>
+          {% else %}
+            <div class="evd-no-reg">No registration required</div>
           {% endif %}
         </div>
-      {% endif %}
-
-      {# Share card #}
-      <div class="evd-sidebar-card">
-        <div class="evd-sidebar-card-title">Share</div>
-        <div class="evd-share-links">
-          <a href="mailto:?subject={{ event.title|urlencode }}&body=Check out this event: {{ request.build_absolute_uri }}"
-             class="evd-share-link">Email</a>
+        {# Date & Time card #}
+        <div class="evd-sidebar-card">
+          <div class="evd-sidebar-card-title">Date &amp; Time</div>
+          <div class="evd-datetime-line">{{ event.start|date:"l, F j, Y" }}</div>
+          <div class="evd-time-line">
+            {{ event.start|date:"g:i A" }}
+            {% if event.end %}&ndash; {{ event.end|date:"g:i A" }}{% endif %}
+            PT
+          </div>
+          <div class="evd-cal-links">
+            <a href="{{ event.google_calendar_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="evd-cal-link">+ Google Calendar</a>
+          </div>
+        </div>
+        {# Location card (desktop) #}
+        {% if event.is_online and event.online_url %}
+          <div class="evd-sidebar-card">
+            <div class="evd-sidebar-card-title">Online Event</div>
+            <a href="{{ event.online_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="evd-directions-link">Join Meeting →</a>
+          </div>
+        {% elif event.venue_name or event.city %}
+          <div class="evd-sidebar-card">
+            <div class="evd-sidebar-card-title">Location</div>
+            {% if event.venue_name %}<div class="evd-location-name">{{ event.venue_name }}</div>{% endif %}
+            <div class="evd-location-address">{{ event.full_address }}</div>
+            {% if event.maps_url %}
+              <a href="{{ event.maps_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="evd-directions-link">Get Directions ↗</a>
+            {% endif %}
+          </div>
+        {% endif %}
+        {# Share card #}
+        <div class="evd-sidebar-card">
+          <div class="evd-sidebar-card-title">Share</div>
+          <div class="evd-share-links">
+            <a href="mailto:?subject={{ event.title|urlencode }}&body=Check out this event: {{ request.build_absolute_uri }}"
+               class="evd-share-link">Email</a>
+          </div>
         </div>
       </div>
-
     </div>
   </div>
-</div>
 {% endblock content %}

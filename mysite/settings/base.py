@@ -359,6 +359,7 @@ CMS_TEMPLATES = [
     ("cms_templates/resources/problem_lists.html", "Resources - Problem Lists"),
     ("cms_templates/resources/preprint_series.html", "Resources - Preprint Series"),
     ("cms_templates/resources/published_papers.html", "Resources - Published Papers"),
+    ("cms_templates/resources/pretext.html", "Resources - PreTeXt"),
     # === ABOUT SECTION ===
     ("cms_templates/about/landing.html", "About - Overview"),
     ("cms_templates/about/contact.html", "About - Contact"),

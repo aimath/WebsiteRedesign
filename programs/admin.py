@@ -11,7 +11,7 @@ import csv
 
 from .models import Program, Workshop, SQuaRE, ResearchCommunity
 from enrollments.models import Enrollment, ProgramInvitation, InvitationEmail
-from .forms import SendReminderForm, BulkInviteForm
+from .forms import SendReminderForm
 
 
 class EnrollmentInline(admin.TabularInline):
@@ -88,7 +88,12 @@ class UpcomingFilter(admin.SimpleListFilter):
     parameter_name = "when"
 
     def lookups(self, request, model_admin):
-        return [("upcoming", "Upcoming"), ("past", "Past"), ("deadline", "Deadline"), ("all", "All")]
+        return [
+            ("upcoming", "Upcoming"),
+            ("past", "Past"),
+            ("deadline", "Deadline"),
+            ("all", "All"),
+        ]
 
     def value(self):
         value = super().value()
@@ -214,11 +219,6 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
                 name="programs_program_send_reminder",
             ),
             path(
-                "<int:program_id>/bulk-invite/",
-                self.admin_site.admin_view(self.bulk_invite_view),
-                name="programs_program_bulk_invite",
-            ),
-            path(
                 "<int:program_id>/name-badges/",
                 self.admin_site.admin_view(self.export_name_badges),
                 name="programs_program_name_badges",
@@ -237,6 +237,21 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
                 "<int:program_id>/send-enrollment-invites/",
                 self.admin_site.admin_view(self.send_enrollment_invites_view),
                 name="programs_program_send_enrollment_invites",
+            ),
+            path(
+                "<int:program_id>/cancel-enrollment/<int:enrollment_id>/",
+                self.admin_site.admin_view(self.cancel_enrollment_view),
+                name="programs_program_cancel_enrollment",
+            ),
+            path(
+                "<int:program_id>/export-invite-csv/",
+                self.admin_site.admin_view(self.export_invite_csv_view),
+                name="programs_program_export_invite_csv",
+            ),
+            path(
+                "<int:program_id>/mark-invites-sent/",
+                self.admin_site.admin_view(self.mark_invites_sent_view),
+                name="programs_program_mark_invites_sent",
             ),
         ]
         return custom_urls + urls
@@ -288,9 +303,13 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
             summary = checklist.completion_summary()
             return format_html(
                 '<a href="{}" style="white-space:nowrap;">✅ Checklist ({}/{})</a>',
-                url, summary["done"], summary["total"],
+                url,
+                summary["done"],
+                summary["total"],
             )
-        return format_html('<a href="{}" style="white-space:nowrap;">📋 Checklist</a>', url)
+        return format_html(
+            '<a href="{}" style="white-space:nowrap;">📋 Checklist</a>', url
+        )
 
     checklist_link.short_description = "Checklist"
 
@@ -299,7 +318,6 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
         applicants_url = reverse("admin:programs_program_applicants", args=[obj.id])
         export_url = reverse("admin:programs_program_export_csv", args=[obj.id])
         emails_url = reverse("admin:programs_program_emails", args=[obj.id])
-        invite_url = reverse("admin:programs_program_bulk_invite", args=[obj.id])
         badges_url = reverse("admin:programs_program_name_badges", args=[obj.id])
         manage_url = reverse("admin:programs_program_manage_enrollments", args=[obj.id])
 
@@ -307,13 +325,11 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
             '<a href="{}">👥 Applicants</a><br>'
             '<a href="{}">📥 CSV</a><br>'
             '<a href="{}">📧 Emails</a><br>'
-            '<a href="{}">✉️ Invite</a><br>'
             '<a href="{}">🏷️ Badges</a><br>'
             '<a href="{}">⚙️ Manage</a>',
             applicants_url,
             export_url,
             emails_url,
-            invite_url,
             badges_url,
             manage_url,
         )
@@ -327,19 +343,16 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
         export_url = reverse("admin:programs_program_export_csv", args=[obj.id])
         emails_url = reverse("admin:programs_program_emails", args=[obj.id])
         reminder_url = reverse("admin:programs_program_send_reminder", args=[obj.id])
-        invite_url = reverse("admin:programs_program_bulk_invite", args=[obj.id])
 
         return format_html(
             '<a class="button" href="{}" style="padding: 5px 10px; margin: 2px;">👥 Applicants</a> '
             '<a class="button" href="{}" style="padding: 5px 10px; margin: 2px;">📥 CSV</a> '
             '<a class="button" href="{}" style="padding: 5px 10px; margin: 2px;">📧 Emails</a> '
-            '<a class="button" href="{}" style="padding: 5px 10px; margin: 2px;">📬 Remind</a> '
-            '<a class="button" href="{}" style="padding: 5px 10px; margin: 2px; background: #417690; color: white;">✉️ Bulk Invite</a>',
+            '<a class="button" href="{}" style="padding: 5px 10px; margin: 2px;">📬 Remind</a>',
             applicants_url,
             export_url,
             emails_url,
             reminder_url,
-            invite_url,
         )
 
     staff_actions.short_description = "Staff Tools"
@@ -577,181 +590,6 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=False,
-        )
-
-    def bulk_invite_view(self, request, program_id):
-        """Bulk invite participants by email addresses."""
-        from django.core.mail import send_mail
-        from django.conf import settings
-        from people.models import People
-
-        program = get_object_or_404(Program, id=program_id)
-
-        if not self.has_change_permission(request, program):
-            return HttpResponse("Permission denied", status=403)
-
-        # Get existing invitations and enrollments for this program
-        existing_invite_emails = set(
-            ProgramInvitation.objects.filter(program=program).values_list(
-                "email", flat=True
-            )
-        )
-        existing_enrollment_emails = set(
-            Enrollment.objects.filter(
-                workshop=program, person__email_address__isnull=False
-            ).values_list("person__email_address", flat=True)
-        )
-
-        if request.method == "POST":
-            form = BulkInviteForm(request.POST)
-
-            if form.is_valid():
-                emails = form.cleaned_data["emails"]
-                message = form.cleaned_data.get("message", "")
-                send_emails = form.cleaned_data.get("send_emails", True)
-
-                created_count = 0
-                skipped_existing = []
-                skipped_enrolled = []
-                email_errors = []
-
-                for email in emails:
-                    email_lower = email.lower()
-
-                    # Skip if already invited
-                    if email_lower in existing_invite_emails:
-                        skipped_existing.append(email)
-                        continue
-
-                    # Skip if already enrolled
-                    if email_lower in existing_enrollment_emails:
-                        skipped_enrolled.append(email)
-                        continue
-
-                    # Try to find existing person by email
-                    person = People.objects.filter(email_address__iexact=email).first()
-
-                    # Create invitation
-                    invitation = ProgramInvitation.objects.create(
-                        program=program,
-                        email=email_lower,
-                        person=person,
-                        message=message,
-                        invited_by=request.user,
-                    )
-                    created_count += 1
-                    existing_invite_emails.add(email_lower)  # Track for deduplication
-
-                    # Send email if requested
-                    if send_emails:
-                        try:
-                            self._send_invitation_email(request, invitation)
-                        except Exception as e:
-                            email_errors.append(f"{email}: {str(e)}")
-
-                # Build result message
-                result_parts = []
-                if created_count:
-                    result_parts.append(f"Created {created_count} invitation(s)")
-                if skipped_existing:
-                    result_parts.append(
-                        f"Skipped {len(skipped_existing)} already invited"
-                    )
-                if skipped_enrolled:
-                    result_parts.append(
-                        f"Skipped {len(skipped_enrolled)} already enrolled"
-                    )
-
-                if result_parts:
-                    messages.success(request, ". ".join(result_parts) + ".")
-
-                if email_errors:
-                    messages.warning(
-                        request,
-                        f"Email errors: {', '.join(email_errors[:3])}"
-                        + (
-                            f" and {len(email_errors) - 3} more"
-                            if len(email_errors) > 3
-                            else ""
-                        ),
-                    )
-
-                # Log the action
-                self.log_change(
-                    request,
-                    program,
-                    f"Bulk invited {created_count} participants by {request.user.username}",
-                )
-
-                return redirect("admin:programs_program_change", program.id)
-        else:
-            form = BulkInviteForm()
-
-        # Get invitation stats for context
-        invitation_stats = {
-            "total": ProgramInvitation.objects.filter(program=program).count(),
-            "pending": ProgramInvitation.objects.filter(
-                program=program, status=ProgramInvitation.Status.PENDING
-            ).count(),
-            "accepted": ProgramInvitation.objects.filter(
-                program=program, status=ProgramInvitation.Status.ACCEPTED
-            ).count(),
-        }
-
-        context = {
-            **self.admin_site.each_context(request),
-            "program": program,
-            "form": form,
-            "invitation_stats": invitation_stats,
-            "title": f"Bulk Invite - {program.title}",
-        }
-
-        return render(request, "admin/programs/bulk_invite.html", context)
-
-    def _send_invitation_email(self, request, invitation):
-        """Send an invitation email."""
-        from django.core.mail import send_mail
-        from django.conf import settings
-
-        invite_url = request.build_absolute_uri(
-            reverse("enrollments:invitation_respond", args=[invitation.token])
-        )
-
-        subject = f"You're invited to {invitation.program.title}"
-
-        body = f"""
-You have been invited to participate in {invitation.program.title}.
-
-Program Dates: {invitation.program.start_date} - {invitation.program.end_date}
-Location: {invitation.program.location or 'TBD'}
-
-Please respond by: {invitation.expires_at}
-
-{invitation.message if invitation.message else ''}
-
-To accept or decline this invitation, please visit:
-{invite_url}
-
-If you have any questions, please contact workshops@aimath.org.
-
-Best regards,
-American Institute of Mathematics
-        """.strip()
-
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[invitation.email],
-            fail_silently=False,
-        )
-
-        # Record the email
-        InvitationEmail.objects.create(
-            invitation=invitation,
-            sent_by=request.user,
-            subject=subject,
-            body=body,
         )
 
     # ========== BULK ACTIONS ==========
@@ -1029,29 +867,57 @@ American Institute of Mathematics
         )
 
     def send_enrollment_invites_view(self, request, program_id):
-        """Send invitation emails for selected enrollments."""
+        """Send invitation emails — two-step: compose then send."""
         from django.core.mail import send_mail
-        from django.template.loader import render_to_string
         from django.conf import settings
 
         program = get_object_or_404(Program, id=program_id)
-
         if not self.has_change_permission(request, program):
             return HttpResponse("Permission denied", status=403)
-
         if request.method != "POST":
-            return redirect(
-                "admin:programs_program_manage_enrollments", program_id=program_id
-            )
+            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
 
-        # Get selected enrollment IDs
         enrollment_ids = request.POST.getlist("enrollment_ids")
-
         if not enrollment_ids:
             messages.warning(request, "No enrollments selected.")
-            return redirect(
-                "admin:programs_program_manage_enrollments", program_id=program_id
+            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+
+        # Step 1 — show compose form if subject/body not yet submitted
+        if "subject" not in request.POST:
+            enrollments = Enrollment.objects.filter(
+                id__in=enrollment_ids, workshop=program, person__isnull=True
             )
+            dates_line = ""
+            if program.start_date:
+                dates_line = f"\nDates: {program.start_date} - {program.end_date}"
+            default_subject = f"Invitation: {program.title}"
+            default_body = (
+                f"Hello {{first_name}},\n\n"
+                f"You have been invited to participate in {program.title}.{dates_line}\n\n"
+                f"To respond to this invitation, please visit:\n{{invite_url}}\n\n"
+                f"Or use these direct links:\n"
+                f"  Accept: {{accept_url}}\n"
+                f"  Decline: {{decline_url}}\n\n"
+                f"If you have any questions, please contact us at info@aimath.org.\n\n"
+                f"Best regards,\nAmerican Institute of Mathematics"
+            )
+            context = {
+                **self.admin_site.each_context(request),
+                "program": program,
+                "enrollments": enrollments,
+                "enrollment_ids": enrollment_ids,
+                "default_subject": default_subject,
+                "default_body": default_body,
+                "title": f"Compose Invitation Email — {program.title}",
+            }
+            return render(request, "admin/programs/compose_invite.html", context)
+
+        # Step 2 — send emails using submitted subject/body
+        subject = request.POST.get("subject", "").strip()
+        body_template = request.POST.get("body", "").strip()
+        if not subject or not body_template:
+            messages.error(request, "Subject and body are required.")
+            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
 
         enrollments = Enrollment.objects.filter(
             id__in=enrollment_ids,
@@ -1065,62 +931,125 @@ American Institute of Mathematics
 
         for enrollment in enrollments:
             try:
-                # Generate token for this enrollment
                 enrollment.generate_invite_token()
                 enrollment.save(update_fields=["invite_token"])
 
-                # Build invite URL using enrollment token
                 invite_url = request.build_absolute_uri(
-                    reverse(
-                        "enrollments:enrollment_respond", args=[enrollment.invite_token]
-                    )
+                    reverse("enrollments:enrollment_respond", args=[enrollment.invite_token])
                 )
-
-                # Send email
-                subject = f"Invitation: {program.title}"
-                context = {
-                    "first_name": enrollment.first_name or "Participant",
-                    "program": program,
-                    "invite_url": invite_url,
-                    "accept_url": f"{invite_url}?action=accept",
-                    "decline_url": f"{invite_url}?action=decline",
-                }
-
-                html_message = render_to_string(
-                    "emails/program_invitation.html", context
-                )
-                plain_message = render_to_string(
-                    "emails/program_invitation.txt", context
+                body = body_template.format(
+                    first_name=enrollment.first_name or "Participant",
+                    invite_url=invite_url,
+                    accept_url=f"{invite_url}?action=accept",
+                    decline_url=f"{invite_url}?action=decline",
                 )
 
                 send_mail(
                     subject=subject,
-                    message=plain_message,
+                    message=body,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[enrollment.email_snap],
-                    html_message=html_message,
                     fail_silently=False,
                 )
 
-                # Mark as sent using the send_invite method
-                enrollment.send_invite(sent_by=request.user)
-
+                enrollment.invite_sent_at = timezone.now()
+                enrollment.invited_by = request.user
+                enrollment.save(update_fields=["invite_sent_at", "invited_by"])
                 sent_count += 1
 
             except Exception as e:
                 error_count += 1
-                messages.error(
-                    request, f"Failed to send to {enrollment.email_snap}: {e}"
-                )
+                messages.error(request, f"Failed to send to {enrollment.email_snap}: {e}")
 
         if sent_count:
+            self.log_change(request, program, f"Sent {sent_count} invitation email(s) by {request.user.username}")
             messages.success(request, f"Sent {sent_count} invitation(s).")
         if error_count:
-            messages.warning(request, f"{error_count} email(s) failed to send.")
+            messages.warning(request, f"{error_count} email(s) failed.")
 
-        return redirect(
-            "admin:programs_program_manage_enrollments", program_id=program_id
+        return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+
+    def cancel_enrollment_view(self, request, program_id, enrollment_id):
+        """Cancel a pending or awaiting-response enrollment invite."""
+        program = get_object_or_404(Program, id=program_id)
+        if not self.has_change_permission(request, program):
+            return HttpResponse("Permission denied", status=403)
+        if request.method != "POST":
+            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+
+        enrollment = get_object_or_404(Enrollment, id=enrollment_id, workshop=program)
+        if enrollment.person is not None:
+            messages.error(request, "Cannot cancel — this person has already linked their account.")
+        else:
+            name = f"{enrollment.first_name or ''} {enrollment.last_name or ''}".strip() or enrollment.email_snap
+            enrollment.delete()
+            self.log_change(request, program, f"Cancelled invite for {name}")
+            messages.success(request, f"Cancelled invite for {name}.")
+
+        return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+
+    def export_invite_csv_view(self, request, program_id):
+        """Export pending invites as CSV with personalized invite links."""
+        program = get_object_or_404(Program, id=program_id)
+        if not self.has_view_permission(request, program):
+            return HttpResponse("Permission denied", status=403)
+
+        enrollments = Enrollment.objects.filter(
+            workshop=program,
+            person__isnull=True,
+            invite_sent_at__isnull=True,
+        ).order_by("last_name", "first_name")
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = (
+            f'attachment; filename="invites_{program.code}_{datetime.now().strftime("%Y%m%d")}.csv"'
         )
+
+        writer = csv.writer(response)
+        writer.writerow(["First Name", "Last Name", "Email", "Funding", "Invite URL"])
+
+        for e in enrollments:
+            e.generate_invite_token()
+            e.save(update_fields=["invite_token"])
+            invite_url = request.build_absolute_uri(
+                reverse("enrollments:enrollment_respond", args=[e.invite_token])
+            )
+            writer.writerow([e.first_name or "", e.last_name or "", e.email_snap or "", e.funding or "", invite_url])
+
+        self.log_change(request, program, f"Exported invite links CSV for {enrollments.count()} pending invites")
+        return response
+
+    def mark_invites_sent_view(self, request, program_id):
+        """Mark selected pending invites as sent without emailing (for external sends)."""
+        program = get_object_or_404(Program, id=program_id)
+        if not self.has_change_permission(request, program):
+            return HttpResponse("Permission denied", status=403)
+        if request.method != "POST":
+            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+
+        enrollment_ids = request.POST.getlist("enrollment_ids")
+        if not enrollment_ids:
+            messages.warning(request, "No enrollments selected.")
+            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+
+        enrollments = Enrollment.objects.filter(
+            id__in=enrollment_ids,
+            workshop=program,
+            person__isnull=True,
+            invite_sent_at__isnull=True,
+        )
+
+        count = 0
+        for e in enrollments:
+            e.generate_invite_token()
+            e.invite_sent_at = timezone.now()
+            e.invited_by = request.user
+            e.save(update_fields=["invite_token", "invite_sent_at", "invited_by"])
+            count += 1
+
+        self.log_change(request, program, f"Marked {count} invite(s) as sent externally by {request.user.username}")
+        messages.success(request, f"Marked {count} invite(s) as sent (external).")
+        return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
 
 
 # =============================================================================
