@@ -4,3 +4,4 @@ from django.apps import AppConfig
 class EnrollmentsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'enrollments'
+    verbose_name = "A4 - Enrollments"

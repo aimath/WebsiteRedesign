@@ -9,23 +9,14 @@
     </p>
     <hr>
     <!-- Import Section -->
-    <div style="background: #f8f9fa;
-                padding: 20px;
-                margin: 20px 0;
-                border-radius: 8px">
+    <div style="background: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px">
         <h2>Import Enrollments from CSV</h2>
-        <p>
-            Paste CSV data with headers: <code>first_name,last_name,email,funding</code>
-        </p>
-        <form method="post"
-              action="{% url 'admin:programs_program_import_enrollments' program.id %}">
+        <p>Paste CSV data with headers: <code>first_name,last_name,email,funding</code></p>
+        <form method="post" action="{% url 'admin:programs_program_import_enrollments' program.id %}">
             {% csrf_token %}
-            <textarea name="csv_data"
-                      rows="8"
-                      style="width: 100%;
-                             font-family: monospace;
-                             font-size: 13px"
-                      placeholder="first_name,last_name,email,funding John,Smith,john@example.com,full Jane,Doe,jane@example.com,partial"></textarea>
+            <textarea name="csv_data" rows="8"
+                      style="width: 100%; font-family: monospace; font-size: 13px"
+                      placeholder="first_name,last_name,email,funding&#10;John,Smith,john@example.com,full&#10;Jane,Doe,jane@example.com,partial"></textarea>
             <div style="margin-top: 10px;">
                 <input type="submit" value="Import Enrollments" class="default">
             </div>
@@ -34,45 +25,68 @@
     <hr>
     <!-- Pending Invites Section -->
     <div style="margin: 20px 0;">
-        <h2>Pending Invites ({{ pending_invites.count }})</h2>
-        <p class="text-muted">Enrollments added but invitation email not yet sent.</p>
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 6px;">
+            <h2 style="margin: 0;">Pending Invites ({{ pending_invites.count }})</h2>
+            {% if pending_invites %}
+                <a href="{% url 'admin:programs_program_export_invite_csv' program.id %}"
+                   style="background: #417690; color: white; padding: 4px 10px; text-decoration: none; border-radius: 3px; font-size: 13px;">
+                    Export Invite Links CSV
+                </a>
+            {% endif %}
+        </div>
+        <p class="help">Enrollments imported but invitation email not yet sent.</p>
         {% if pending_invites %}
-            <form method="post"
-                  action="{% url 'admin:programs_program_send_enrollment_invites' program.id %}">
+            <form id="pending-form" method="post">
                 {% csrf_token %}
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="background: #f1f1f1;">
-                            <th style="padding: 8px; text-align: left; width: 30px;">
-                                <input type="checkbox"
-                                       id="select-all-pending"
-                                       onclick="toggleAll(this, 'pending')">
+                            <th style="padding: 8px; width: 30px;">
+                                <input type="checkbox" id="select-all-pending" onclick="toggleAll(this, 'pending')">
                             </th>
                             <th style="padding: 8px; text-align: left;">Name</th>
                             <th style="padding: 8px; text-align: left;">Email</th>
                             <th style="padding: 8px; text-align: left;">Funding</th>
                             <th style="padding: 8px; text-align: left;">Added</th>
+                            <th style="padding: 8px; text-align: left;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for e in pending_invites %}
                             <tr style="border-bottom: 1px solid #ddd;">
                                 <td style="padding: 8px;">
-                                    <input type="checkbox"
-                                           name="enrollment_ids"
-                                           value="{{ e.id }}"
-                                           class="pending-checkbox">
+                                    <input type="checkbox" name="enrollment_ids" value="{{ e.id }}" class="pending-checkbox">
                                 </td>
                                 <td style="padding: 8px;">{{ e.first_name }} {{ e.last_name }}</td>
                                 <td style="padding: 8px;">{{ e.email_snap }}</td>
                                 <td style="padding: 8px;">{{ e.funding|default:"—" }}</td>
                                 <td style="padding: 8px;">{{ e.created_at|date:"M d, Y" }}</td>
+                                <td style="padding: 8px;">
+                                    <form method="post"
+                                          action="{% url 'admin:programs_program_cancel_enrollment' program.id e.id %}"
+                                          style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                style="background: #ba2121; color: white; border: none; padding: 3px 8px; cursor: pointer; border-radius: 3px; font-size: 12px;"
+                                                onclick="return confirm('Cancel invite for {{ e.first_name }} {{ e.last_name }}?')">
+                                            Cancel
+                                        </button>
+                                    </form>
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-                <div style="margin-top: 15px;">
-                    <input type="submit" value="Send Invites to Selected" class="default">
+                <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                    <button type="button" class="default"
+                            onclick="submitPendingForm('{% url 'admin:programs_program_send_enrollment_invites' program.id %}')">
+                        Send Invites to Selected
+                    </button>
+                    <button type="button"
+                            style="background: #5a6268; color: white; border: none; padding: 5px 12px; cursor: pointer; border-radius: 3px;"
+                            onclick="submitPendingForm('{% url 'admin:programs_program_mark_invites_sent' program.id %}')">
+                        Mark as Sent (External)
+                    </button>
                 </div>
             </form>
         {% else %}
@@ -83,7 +97,7 @@
     <!-- Invited, Awaiting Response Section -->
     <div style="margin: 20px 0;">
         <h2>Invited, Awaiting Response ({{ invited_awaiting.count }})</h2>
-        <p class="text-muted">Invitation sent, waiting for them to accept/decline.</p>
+        <p class="help">Invitation sent, waiting for them to accept/decline.</p>
         {% if invited_awaiting %}
             <table style="width: 100%; border-collapse: collapse;">
                 <thead>
@@ -92,6 +106,7 @@
                         <th style="padding: 8px; text-align: left;">Email</th>
                         <th style="padding: 8px; text-align: left;">Funding</th>
                         <th style="padding: 8px; text-align: left;">Invite Sent</th>
+                        <th style="padding: 8px; text-align: left;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -101,6 +116,18 @@
                             <td style="padding: 8px;">{{ e.email_snap }}</td>
                             <td style="padding: 8px;">{{ e.funding|default:"—" }}</td>
                             <td style="padding: 8px;">{{ e.invite_sent_at|date:"M d, Y H:i" }}</td>
+                            <td style="padding: 8px;">
+                                <form method="post"
+                                      action="{% url 'admin:programs_program_cancel_enrollment' program.id e.id %}"
+                                      style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            style="background: #ba2121; color: white; border: none; padding: 3px 8px; cursor: pointer; border-radius: 3px; font-size: 12px;"
+                                            onclick="return confirm('Cancel invite for {{ e.first_name }} {{ e.last_name }}? Their invite link will stop working.')">
+                                        Cancel
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -113,7 +140,7 @@
     <!-- Confirmed Section -->
     <div style="margin: 20px 0;">
         <h2>Confirmed/Linked ({{ confirmed.count }})</h2>
-        <p class="text-muted">Enrollments linked to a person account.</p>
+        <p class="help">Enrollments linked to a person account.</p>
         {% if confirmed %}
             <table style="width: 100%; border-collapse: collapse;">
                 <thead>
@@ -134,11 +161,7 @@
                                 {% endif %}
                             </td>
                             <td style="padding: 8px;">
-                                {% if e.person %}
-                                    {{ e.person.email_address }}
-                                {% else %}
-                                    {{ e.email_snap }}
-                                {% endif %}
+                                {% if e.person %}{{ e.person.email_address }}{% else %}{{ e.email_snap }}{% endif %}
                             </td>
                             <td style="padding: 8px;">
                                 {% if e.accepted_at %}
@@ -159,8 +182,17 @@
     </div>
     <script>
 function toggleAll(source, group) {
-    const checkboxes = document.querySelectorAll('.' + group + '-checkbox');
-    checkboxes.forEach(cb => cb.checked = source.checked);
+    document.querySelectorAll('.' + group + '-checkbox').forEach(cb => cb.checked = source.checked);
+}
+function submitPendingForm(action) {
+    const form = document.getElementById('pending-form');
+    const checked = form.querySelectorAll('input[name="enrollment_ids"]:checked');
+    if (!checked.length) {
+        alert('Please select at least one enrollment.');
+        return;
+    }
+    form.action = action;
+    form.submit();
 }
     </script>
 {% endblock %}
