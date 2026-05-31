@@ -13,7 +13,6 @@ from .forms import (
     DirectorDefaultsForm,
     DirectorPeriodEntryForm,
     PeriodDescribeForm,
-    WeeklyTimesheetLineFormSet,
     ZeroWeekConfirmForm,
 )
 from .models import (
@@ -114,258 +113,10 @@ def weekly_entry(request, week_id):
         messages.error(request, "This reporting period is locked.")
         return redirect("timeeffort:dashboard")
 
-    if profile.is_salary:
-        return _salary_weekly_entry(request, profile, week)
+    if profile.is_director:
+        raise Http404
 
-    # Get or create the timesheet
-    timesheet, _ = WeeklyTimesheet.objects.get_or_create(
-        staff=profile,
-        week=week,
-        defaults={"status": WeeklyTimesheet.Status.DRAFT},
-    )
-
-    initial, num_preset_rows = _build_initial_for_week(profile, week)
-
-    if request.method == "POST":
-        action = request.POST.get("action", "save")
-
-        if action == "confirm_zero":
-            zero_form = ZeroWeekConfirmForm(request.POST)
-            if zero_form.is_valid():
-                timesheet.zero_week_reason = zero_form.cleaned_data["zero_week_reason"]
-                timesheet.submit()
-                _invalidate_period_report_pdf(profile, week.period)
-                messages.success(
-                    request,
-                    f"Week of {week.start_date} confirmed as zero-hour and submitted.",
-                )
-                return redirect("timeeffort:dashboard")
-            formset = WeeklyTimesheetLineFormSet(initial=initial, prefix="lines")
-            return render(
-                request,
-                "timeeffort/weekly_entry.html",
-                {
-                    "timesheet": timesheet,
-                    "week": week,
-                    "formset": formset,
-                    "zero_form": zero_form,
-                    "show_zero_modal": True,
-                    "num_preset_rows": num_preset_rows,
-                    "day_labels": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-                },
-            )
-
-        formset = WeeklyTimesheetLineFormSet(request.POST, prefix="lines")
-        if formset.is_valid():
-            timesheet.lines.all().delete()
-            for form in formset:
-                if form.cleaned_data.get("DELETE"):
-                    continue
-                activity = form.cleaned_data.get("activity")
-                if not activity:
-                    continue
-                WeeklyTimesheetLine.objects.create(
-                    timesheet=timesheet,
-                    activity=activity,
-                    grant_code=form.cleaned_data.get("grant_code", ""),
-                    hours_sun=form.cleaned_data.get("hours_sun") or Decimal("0"),
-                    hours_mon=form.cleaned_data.get("hours_mon") or Decimal("0"),
-                    hours_tue=form.cleaned_data.get("hours_tue") or Decimal("0"),
-                    hours_wed=form.cleaned_data.get("hours_wed") or Decimal("0"),
-                    hours_thu=form.cleaned_data.get("hours_thu") or Decimal("0"),
-                    hours_fri=form.cleaned_data.get("hours_fri") or Decimal("0"),
-                    hours_sat=form.cleaned_data.get("hours_sat") or Decimal("0"),
-                    description=form.cleaned_data.get("description", ""),
-                )
-
-            if action == "submit":
-                total = timesheet.total_hours
-                if total == 0:
-                    zero_form = ZeroWeekConfirmForm()
-                    new_initial, num_preset_rows = _build_initial_for_week(
-                        profile, week
-                    )
-                    formset = WeeklyTimesheetLineFormSet(
-                        initial=new_initial, prefix="lines"
-                    )
-                    return render(
-                        request,
-                        "timeeffort/weekly_entry.html",
-                        {
-                            "timesheet": timesheet,
-                            "week": week,
-                            "formset": formset,
-                            "zero_form": zero_form,
-                            "show_zero_modal": True,
-                            "num_preset_rows": num_preset_rows,
-                            "day_labels": [
-                                "Sun",
-                                "Mon",
-                                "Tue",
-                                "Wed",
-                                "Thu",
-                                "Fri",
-                                "Sat",
-                            ],
-                        },
-                    )
-                timesheet.submit()
-                _invalidate_period_report_pdf(profile, week.period)
-                messages.success(
-                    request, f"Week of {week.start_date} submitted successfully."
-                )
-                return redirect("timeeffort:dashboard")
-
-            messages.success(request, "Draft saved.")
-            return redirect("timeeffort:weekly_entry", week_id=week.id)
-    else:
-        formset = WeeklyTimesheetLineFormSet(initial=initial, prefix="lines")
-
-    zero_form = ZeroWeekConfirmForm()
-    return render(
-        request,
-        "timeeffort/weekly_entry.html",
-        {
-            "timesheet": timesheet,
-            "week": week,
-            "profile": profile,
-            "formset": formset,
-            "zero_form": zero_form,
-            "show_zero_modal": False,
-            "num_preset_rows": num_preset_rows,
-            "day_labels": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-        },
-    )
-
-
-def _zero_to_none(value):
-    """Render zero hours as blank so users don't have to delete a 0 before typing."""
-    return None if not value else value
-
-
-def _line_to_initial(line):
-    return {
-        "activity": line.activity_id,
-        "grant_code": line.grant_code,
-        "hours_sun": _zero_to_none(line.hours_sun),
-        "hours_mon": _zero_to_none(line.hours_mon),
-        "hours_tue": _zero_to_none(line.hours_tue),
-        "hours_wed": _zero_to_none(line.hours_wed),
-        "hours_thu": _zero_to_none(line.hours_thu),
-        "hours_fri": _zero_to_none(line.hours_fri),
-        "hours_sat": _zero_to_none(line.hours_sat),
-        "description": line.description,
-    }
-
-
-def _blank_initial(activity):
-    return {
-        "activity": activity.id,
-        "grant_code": activity.default_grant_code,
-        "hours_sun": None,
-        "hours_mon": None,
-        "hours_tue": None,
-        "hours_wed": None,
-        "hours_thu": None,
-        "hours_fri": None,
-        "hours_sat": None,
-        "description": "",
-    }
-
-
-def _build_initial_for_week(profile, week):
-    """
-    Build ordered initial form data for a weekly entry.
-
-    Row order:
-    1. Preset activities (always shown, cannot be removed)
-    2. Non-preset activities carried forward from earlier weeks in this period
-    3. Any non-preset lines already saved to this specific week (e.g. added mid-period)
-
-    Returns (initial_list, num_preset_rows) so the template knows which rows are locked.
-    """
-    from .models import Activity
-
-    preset_activities = list(
-        Activity.objects.filter(is_preset=True, is_active=True).order_by(
-            "sort_order", "name"
-        )
-    )
-
-    # Existing lines for this week: keyed by (activity_id, grant_code)
-    existing_lines = {}
-    try:
-        ts = WeeklyTimesheet.objects.get(staff=profile, week=week)
-        for line in ts.lines.select_related("activity").all():
-            existing_lines[(line.activity_id, line.grant_code)] = line
-    except WeeklyTimesheet.DoesNotExist:
-        pass
-
-    # Non-preset activities used in earlier weeks of this period (carry-forward)
-    earlier_weeks = week.period.weeks.filter(week_number__lt=week.week_number)
-    carried_keys = []
-    if earlier_weeks.exists():
-        carried = (
-            WeeklyTimesheetLine.objects.filter(
-                timesheet__staff=profile,
-                timesheet__week__in=earlier_weeks,
-                activity__is_preset=False,
-            )
-            .values("activity_id", "grant_code")
-            .distinct()
-            .order_by("activity__sort_order", "activity__name")
-        )
-        carried_keys = [(c["activity_id"], c["grant_code"]) for c in carried]
-
-    initial = []
-    seen_keys = set()
-
-    # 1. Preset rows (locked)
-    for activity in preset_activities:
-        # Grant addon presets may appear multiple times with different grant codes
-        # if the user saved a specific grant code last time.
-        matching = [(k, v) for k, v in existing_lines.items() if k[0] == activity.id]
-        if matching:
-            for key, line in matching:
-                seen_keys.add(key)
-                initial.append(_line_to_initial(line))
-        else:
-            key = (activity.id, activity.default_grant_code)
-            seen_keys.add(key)
-            initial.append(_blank_initial(activity))
-
-    num_preset_rows = len(initial)
-
-    # 2. Carried-forward non-preset rows
-    for act_id, grant_code in carried_keys:
-        key = (act_id, grant_code)
-        if key in seen_keys:
-            continue
-        seen_keys.add(key)
-        line = existing_lines.get(key)
-        initial.append(
-            _line_to_initial(line)
-            if line
-            else {
-                "activity": act_id,
-                "grant_code": grant_code,
-                "hours_sun": Decimal("0"),
-                "hours_mon": Decimal("0"),
-                "hours_tue": Decimal("0"),
-                "hours_wed": Decimal("0"),
-                "hours_thu": Decimal("0"),
-                "hours_fri": Decimal("0"),
-                "hours_sat": Decimal("0"),
-                "description": "",
-            }
-        )
-
-    # 3. Any custom rows saved this week that weren't in carry-forward
-    for key, line in existing_lines.items():
-        if key not in seen_keys:
-            initial.append(_line_to_initial(line))
-
-    return initial, num_preset_rows
+    return _salary_weekly_entry(request, profile, week)
 
 
 # =============================================================================
@@ -513,21 +264,20 @@ def _build_salary_rows(profile, week):
 
     indirect_rows = []
 
-    # Holiday activity: shown first in indirect section, auto-filled with 8h per holiday day
-    if holiday_dates:
-        try:
-            holiday_act = Activity.objects.get(is_holiday_activity=True, is_active=True)
-            if holiday_act.id in existing_by_act:
-                hours = _get_hours(existing_by_act[holiday_act.id])
-            else:
-                hours = _zero_hours()
-                for d in SALARY_DAY_KEYS:
-                    if day_dates[d] in holiday_dates:
-                        hours[d] = Decimal("8")
-            indirect_rows.append({"activity": holiday_act, "hours_pairs": _pairs(hours)})
-            holiday_activity_ids.add(holiday_act.id)  # exclude from regular loop below
-        except Activity.DoesNotExist:
-            pass
+    # Holiday activity: always shown first in indirect section; auto-fills 8h on holiday days.
+    try:
+        holiday_act = Activity.objects.get(is_holiday_activity=True, is_active=True)
+        if holiday_act.id in existing_by_act:
+            hours = _get_hours(existing_by_act[holiday_act.id])
+        else:
+            hours = _zero_hours()
+            for d in SALARY_DAY_KEYS:
+                if day_dates[d] in holiday_dates:
+                    hours[d] = Decimal("8")
+        indirect_rows.append({"activity": holiday_act, "hours_pairs": _pairs(hours)})
+        holiday_activity_ids.add(holiday_act.id)
+    except Activity.DoesNotExist:
+        pass
 
     for act in indirect_activities:
         if act.id in holiday_activity_ids:
@@ -639,14 +389,18 @@ def _save_salary_lines_from_post(post_data, timesheet):
 
 
 def _salary_weekly_entry(request, profile, week):
-    """Salary staff weekly entry: pre-listed activities, never locked after submission."""
+    """Weekly entry for salary and hourly staff: pre-listed structured rows."""
     timesheet, _ = WeeklyTimesheet.objects.get_or_create(
         staff=profile,
         week=week,
         defaults={"status": WeeklyTimesheet.Status.DRAFT},
     )
-    # Sequential week number across the full 28-day window (1-4, not 1-2 per period).
-    display_week_number = week.week_number if week.period.period_index % 2 == 0 else week.week_number + 2
+    # Hourly: week 1 or 2 within a single 14-day period.
+    # Salary: sequential 1-4 across the 28-day window.
+    if profile.is_hourly:
+        display_week_number = week.week_number
+    else:
+        display_week_number = week.week_number if week.period.period_index % 2 == 0 else week.week_number + 2
     holiday_dates = set(
         AIMHoliday.objects.filter(
             date__range=[week.start_date, week.end_date]
@@ -1177,6 +931,35 @@ def _copy_prior_duties_descriptions(profile, report):
             line.save(update_fields=["duties_description"])
 
 
+def _period_sort_key(summary):
+    """
+    Sort period cards with three buckets, most recent first within each:
+      0 — returned (supervisor sent back, needs immediate action)
+      1 — within 60 days of today (either direction) OR has any activity started
+      2 — far away (past or future) AND completely untouched — sink to bottom
+
+    Using abs distance so far-future generated periods don't float to the top.
+    """
+    period_end = summary["period_end"]
+    report = summary["report"]
+    today = timezone.now().date()
+
+    if report and report.status == PeriodReport.Status.RETURNED:
+        return (0, -period_end.toordinal())
+
+    has_any_timesheet = any(
+        ws.get("timesheet") is not None
+        for ws in summary.get("week_statuses", [])
+    )
+    has_activity = has_any_timesheet or report is not None
+    is_near = abs((period_end - today).days) <= 60
+
+    if is_near or has_activity:
+        return (1, -period_end.toordinal())
+
+    return (2, -period_end.toordinal())
+
+
 def _hourly_dashboard(request, profile):
     """Hourly staff dashboard: one 14-day period per card, 2 weekly slots each."""
     available_years, selected_year = _get_year_filter(request)
@@ -1216,6 +999,8 @@ def _hourly_dashboard(request, profile):
             "week_statuses": week_statuses,
             "report": report,
         })
+
+    period_summaries.sort(key=_period_sort_key)
 
     _SUBMITTED_STATUSES = [
         PeriodReport.Status.SUBMITTED,
@@ -1297,20 +1082,7 @@ def _salary_dashboard(request, profile):
             "has_submitted": len(submitted_ids) == all_weeks.count(),
         })
 
-    # Sort: upcoming deadline first, past-unsubmitted second, fully-submitted last
-    today = timezone.now().date()
-
-    def _sort_key(s):
-        rpt = s["report"]
-        if rpt and rpt.status not in (None, PeriodReport.Status.DRAFT):
-            return (2, 0)
-        deadline = s["period"].submission_deadline
-        if deadline:
-            delta = (deadline.date() - today).days
-            return (0, delta) if delta >= 0 else (1, -delta)
-        return (1, 99999)
-
-    period_summaries.sort(key=_sort_key)
+    period_summaries.sort(key=_period_sort_key)
 
     _SUBMITTED_STATUSES = [
         PeriodReport.Status.SUBMITTED,
@@ -1394,6 +1166,8 @@ def _director_dashboard(request, profile):
                 "holiday_pct": holiday_count * 5,
             }
         )
+
+    period_summaries.sort(key=_period_sort_key)
 
     has_defaults = DirectorDefaultAllocation.objects.filter(profile=profile).exists()
     returned_reports = (

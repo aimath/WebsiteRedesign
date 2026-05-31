@@ -1,0 +1,93 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<p>
+    <a href="{% url 'admin:programs_program_manage_enrollments' program.id %}">&larr; Back to Manage Enrollments</a>
+</p>
+<hr>
+
+<h2>Confirm Send — {{ program.title }}</h2>
+
+<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:14px 18px;margin-bottom:24px;font-size:14px;">
+    You are about to send invitation emails to <strong>{{ enrollments.count }} participant(s)</strong>.
+    This cannot be undone.
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;margin-bottom:32px;">
+
+    <!-- Recipients -->
+    <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:8px;">
+            Recipients ({{ enrollments.count }})
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+                <tr style="background:#f1f1f1;">
+                    <th style="padding:6px 8px;text-align:left;">Name</th>
+                    <th style="padding:6px 8px;text-align:left;">Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in enrollments %}
+                <tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:6px 8px;">{{ e.first_name }} {{ e.last_name }}</td>
+                    <td style="padding:6px 8px;">{{ e.email_snap }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Email preview -->
+    <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:8px;">
+            Preview{% if preview_recipient %} — rendered for {{ preview_recipient.first_name }} {{ preview_recipient.last_name }}{% endif %}
+        </div>
+        <div style="background:#fff;border:1px solid #dde5ef;border-radius:8px;padding:16px;font-size:13px;">
+            <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
+                <span style="color:#999;font-size:11px;">SUBJECT</span>
+                <span style="margin-left:8px;font-weight:600;">{{ subject }}</span>
+            </div>
+            <pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:13px;margin:0;line-height:1.6;color:#333;">{{ preview_body }}</pre>
+        </div>
+        {% if preview_recipient %}
+        <p style="font-size:11px;color:#999;margin-top:6px;">
+            Links shown above are placeholders — each recipient gets their own unique invite link.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Action buttons -->
+<div style="display:flex;gap:16px;align-items:center;border-top:1px solid #eee;padding-top:20px;">
+    <form method="post" action="{% url 'admin:programs_program_send_enrollment_invites' program.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="subject" value="{{ subject }}">
+        <input type="hidden" name="body" value="{{ body }}">
+        <input type="hidden" name="confirm_send" value="1">
+        {% for id in enrollment_ids %}
+            <input type="hidden" name="enrollment_ids" value="{{ id }}">
+        {% endfor %}
+        <button type="submit"
+                style="background:#1f4467;color:#fff;border:none;padding:10px 22px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;">
+            Confirm — Send to {{ enrollments.count }} Participant{{ enrollments.count|pluralize }}
+        </button>
+    </form>
+
+    <form method="post" action="{% url 'admin:programs_program_send_enrollment_invites' program.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="subject" value="{{ subject }}">
+        <input type="hidden" name="body" value="{{ body }}">
+        <input type="hidden" name="back_to_edit" value="1">
+        {% for id in enrollment_ids %}
+            <input type="hidden" name="enrollment_ids" value="{{ id }}">
+        {% endfor %}
+        <button type="submit"
+                style="background:#f1f1f1;color:#333;border:1px solid #ccc;padding:10px 18px;border-radius:6px;font-size:14px;cursor:pointer;">
+            &larr; Back to Edit
+        </button>
+    </form>
+
+    <a href="{% url 'admin:programs_program_manage_enrollments' program.id %}"
+       style="font-size:13px;color:#999;padding:6px;">Cancel</a>
+</div>
+{% endblock %}

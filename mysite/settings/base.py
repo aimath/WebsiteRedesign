@@ -481,7 +481,10 @@ PAYPAL_MODE = env("PAYPAL_MODE", default="sandbox")  # "sandbox" or "live"
 # Absolute base URL for building PayPal return/cancel URLs
 SITE_URL = env("SITE_URL", default="http://localhost:8000")
 
-# From address for donation receipt emails
+# Per-purpose from addresses
+# One SMTP connection sends all mail; these just control the From: header.
 DONATION_RECEIPT_FROM_EMAIL = env(
-    "DONATION_RECEIPT_FROM_EMAIL", default="donations@aimath.org"
+    "DONATION_RECEIPT_FROM_EMAIL", default="dfinkle@aimath.org"
 )
+WORKSHOPS_FROM_EMAIL = env("WORKSHOPS_FROM_EMAIL", default="dfinkle@aimath.org")
+INVITATIONS_FROM_EMAIL = env("INVITATIONS_FROM_EMAIL", default="dfinkle@aimath.org")

@@ -225,7 +225,7 @@
       <div class="col-lg-4">
         {# Registration / Ticket card #}
         <div class="evd-reg-card">
-          <div class="evd-price">{{ event.price_display }}</div>
+          {% if event.is_free or event.price %}<div class="evd-price">{{ event.price_display }}</div>{% endif %}
           {% if event.capacity %}<div class="evd-capacity-note">{{ event.capacity }}-person capacity</div>{% endif %}
           {% if event.status == 'cancelled' %}
             <button class="evd-reg-btn secondary" disabled>Event Cancelled</button>
