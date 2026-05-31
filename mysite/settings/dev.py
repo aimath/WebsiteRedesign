@@ -66,6 +66,15 @@ SECURE_CSP_REPORT_ONLY = {
     "base-uri": [CSP.SELF],
 }
 
+# Mailpit catches all outgoing mail locally — view at http://localhost:8025
+# Install: brew install mailpit  /  Run: mailpit
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "localhost"
+EMAIL_PORT = 1025
+EMAIL_USE_TLS = False
+EMAIL_HOST_USER = ""
+EMAIL_HOST_PASSWORD = ""
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

@@ -125,6 +125,8 @@ class EnrollmentAdmin(admin.ModelAdmin):
                     "check_in_date",
                     "check_out_date",
                     "funding",
+                    "limits_okay",
+                    "limits_insufficient",
                 ),
                 "classes": ("collapse",),
             },

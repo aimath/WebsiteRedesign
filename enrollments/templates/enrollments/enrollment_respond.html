@@ -18,7 +18,9 @@
                             <p>By accepting, you agree to:</p>
                             <ol>
                                 <li>Actively participate in the open, collaborative atmosphere of the program activities.</li>
-                                <li>Acknowledge the support of AIM and the NSF in papers arising from work at the program, and contribute those papers to the AIM preprint series.</li>
+                                <li>
+                                    Acknowledge the support of AIM and the NSF in papers arising from work at the program, and contribute those papers to the AIM preprint series.
+                                </li>
                                 <li>Give AIM permission to include your papers from the ArXiv in the AIM Collected Works project.</li>
                                 <li>Follow the AIM Code of Conduct.</li>
                             </ol>
@@ -38,12 +40,18 @@
                                 <p class="text-muted mb-0">
                                     <strong>Funding:</strong> {{ enrollment.funding }}
                                 </p>
+                                <br>
+                                <h4>Travel and Hotel Information</h4>
+                                <p>For funded participants, AIM will make a reservation and pay hotel expenses and provide a per diem for meals.</p>
+                                <p>
+                                    We ask that participants provide the following information to help us better allocate our available funds. Please consult AIM's <a target="_blank" href="https://aimath.org/visitors/travel-2/">travel funding page</a> to guide you in answering these questions. If you are able to cover some of your expenses, that will enable AIM to fully fund more graduate students, postdocs, and others for whom paying their own travel would present a burden.
+                                </p>
                             {% endif %}
                         </div>
                         {% if program.description %}
                             <div class="mb-4">
                                 <h4 class="h6">About this program</h4>
-                                <p class="text-muted small">{{ program.description|truncatewords:100 }}</p>
+                                <p class="text-muted small">{{ program.description|safe }}</p>
                             </div>
                         {% endif %}
                         <hr class="my-4">

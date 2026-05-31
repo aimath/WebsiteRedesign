@@ -587,7 +587,7 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
         send_mail(
             subject=f"Reminder: {program.title}",
             message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=settings.WORKSHOPS_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=False,
         )
@@ -867,7 +867,7 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
         )
 
     def send_enrollment_invites_view(self, request, program_id):
-        """Send invitation emails — two-step: compose then send."""
+        """Send invitation emails — three-step: compose → confirm → send."""
         from django.core.mail import send_mail
         from django.conf import settings
 
@@ -875,31 +875,48 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
         if not self.has_change_permission(request, program):
             return HttpResponse("Permission denied", status=403)
         if request.method != "POST":
-            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+            return redirect(
+                "admin:programs_program_manage_enrollments", program_id=program_id
+            )
 
         enrollment_ids = request.POST.getlist("enrollment_ids")
         if not enrollment_ids:
             messages.warning(request, "No enrollments selected.")
-            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+            return redirect(
+                "admin:programs_program_manage_enrollments", program_id=program_id
+            )
 
-        # Step 1 — show compose form if subject/body not yet submitted
+        # Step 1 — show compose form (fresh, or returning from confirm page)
         if "subject" not in request.POST:
             enrollments = Enrollment.objects.filter(
                 id__in=enrollment_ids, workshop=program, person__isnull=True
             )
             dates_line = ""
+            program_url = request.build_absolute_uri(
+                reverse("programs:program-page", args=[program.code])
+            )
             if program.start_date:
-                dates_line = f"\nDates: {program.start_date} - {program.end_date}"
+                dates_line = f"{program.start_date.strftime('%A, %B %-d')} to {program.end_date.strftime('%A, %B %-d, %Y')}"
             default_subject = f"Invitation: {program.title}"
             default_body = (
-                f"Hello {{first_name}},\n\n"
-                f"You have been invited to participate in {program.title}.{dates_line}\n\n"
-                f"To respond to this invitation, please visit:\n{{invite_url}}\n\n"
-                f"Or use these direct links:\n"
-                f"  Accept: {{accept_url}}\n"
-                f"  Decline: {{decline_url}}\n\n"
-                f"If you have any questions, please contact us at info@aimath.org.\n\n"
-                f"Best regards,\nAmerican Institute of Mathematics"
+                f"Dear {{first_name}} {{last_name}},\n\n"
+                f"On behalf of the workshop organizers, {{organizer_line}}, we would like to invite you to participate in the AIM workshop \u201c{program.title}\u201d from {dates_line}\n\n"
+                f"The American Institute of Mathematics is located in the Richard N. Merkin Center for Pure and Applied Mathematics (https://merkincenter.caltech.edu/) on the Caltech campus in Pasadena, CA.\n\n"
+                f"This workshop, sponsored by AIM and the NSF, {program.workshop_email_description}\n"
+                f"More details can be found at {program_url}\n\n"
+                f"Please go to the registration page \n{{invite_url}}\nto accept or decline this invitation.\n\n"
+                f"The two closest airports to AIM are LAX (Los Angeles International Airport) or BUR (Hollywood Burbank Airport).\n\n"
+                f"The workshop runs Monday through Friday from 9 am to 5 pm on the dates listed above, so the arrival day is {program.start_date.strftime('%A, %B %-d')}."
+                f"""The workshop organizers have specific goals for this workshop, which are described on the announcement page\n {program_url}\n
+Workshop activities will be designed to help the group meet these goals.\n
+Typically this means there will be few lectures, and frequently the
+participants will be working in small groups on different aspects of
+the workshop focus.\n\n"""
+                f"""Prior to the workshop you will be asked to describe your particular
+interest and goals for the workshop.  This will help the organizers
+as they plan the workshop activities.  Details in a later mailing. """
+                f"We think this will be an exciting and productive workshop, and we look forward to your participation!\n\n"
+                f"""Sincerely,\n\nSergei Gukov\nDirector\ngukov@aimath.org"""
             )
             context = {
                 **self.admin_site.each_context(request),
@@ -912,13 +929,72 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
             }
             return render(request, "admin/programs/compose_invite.html", context)
 
-        # Step 2 — send emails using submitted subject/body
+        # "← Back to Edit" from confirm page: has subject/body but wants compose again
+        if "back_to_edit" in request.POST:
+            enrollments = Enrollment.objects.filter(
+                id__in=enrollment_ids, workshop=program, person__isnull=True
+            )
+            context = {
+                **self.admin_site.each_context(request),
+                "program": program,
+                "enrollments": enrollments,
+                "enrollment_ids": enrollment_ids,
+                "default_subject": request.POST.get("subject", ""),
+                "default_body": request.POST.get("body", ""),
+                "title": f"Compose Invitation Email — {program.title}",
+            }
+            return render(request, "admin/programs/compose_invite.html", context)
+
         subject = request.POST.get("subject", "").strip()
         body_template = request.POST.get("body", "").strip()
         if not subject or not body_template:
             messages.error(request, "Subject and body are required.")
-            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+            return redirect(
+                "admin:programs_program_manage_enrollments", program_id=program_id
+            )
 
+        # organizer list
+        names = [program.organizer1, program.organizer2, program.organizer3]
+        if len(names) <= 1:
+            organizer_line = names[0] if names else "the organizing committee"
+        elif len(names) == 2:
+            organizer_line = f"{names[0]} and {names[1]}"
+        else:
+            organizer_line = f"{names[0]}, {names[1]}, and {names[2]}"
+
+        # Step 2 — preview/confirm: show rendered email before committing to send
+        if "confirm_send" not in request.POST:
+            enrollments = Enrollment.objects.filter(
+                id__in=enrollment_ids, workshop=program, person__isnull=True
+            )
+            preview_body = None
+            preview_recipient = None
+            first = enrollments.first()
+            if first:
+                sample_base = request.build_absolute_uri("/")
+                preview_body = body_template.format(
+                    first_name=first.first_name or "Participant",
+                    last_name=first.last_name,
+                    organizer_line=organizer_line,
+                    invite_url=f"{sample_base}invite/[personal-link]/",
+                    accept_url=f"{sample_base}invite/[personal-link]/?action=accept",
+                    decline_url=f"{sample_base}invite/[personal-link]/?action=decline",
+                )
+                preview_recipient = first
+            context = {
+                **self.admin_site.each_context(request),
+                "program": program,
+                "enrollments": enrollments,
+                "enrollment_ids": enrollment_ids,
+                "subject": subject,
+                "body": body_template,
+                "preview_body": preview_body,
+                "preview_recipient": preview_recipient,
+                "title": f"Confirm Send — {program.title}",
+            }
+            return render(request, "admin/programs/confirm_invite.html", context)
+
+        # Step 3 — confirmed: send emails
         enrollments = Enrollment.objects.filter(
             id__in=enrollment_ids,
             workshop=program,
@@ -935,10 +1011,14 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
                 enrollment.save(update_fields=["invite_token"])
 
                 invite_url = request.build_absolute_uri(
-                    reverse("enrollments:enrollment_respond", args=[enrollment.invite_token])
+                    reverse(
+                        "enrollments:enrollment_respond", args=[enrollment.invite_token]
+                    )
                 )
                 body = body_template.format(
                     first_name=enrollment.first_name or "Participant",
+                    last_name=enrollment.last_name,
+                    organizer_line=organizer_line,
                     invite_url=invite_url,
                     accept_url=f"{invite_url}?action=accept",
                     decline_url=f"{invite_url}?action=decline",
@@ -947,7 +1027,7 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
                 send_mail(
                     subject=subject,
                     message=body,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=settings.WORKSHOPS_FROM_EMAIL,
                     recipient_list=[enrollment.email_snap],
                     fail_silently=False,
                 )
@@ -959,15 +1039,23 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
 
             except Exception as e:
                 error_count += 1
-                messages.error(request, f"Failed to send to {enrollment.email_snap}: {e}")
+                messages.error(
+                    request, f"Failed to send to {enrollment.email_snap}: {e}"
+                )
 
         if sent_count:
-            self.log_change(request, program, f"Sent {sent_count} invitation email(s) by {request.user.username}")
+            self.log_change(
+                request,
+                program,
+                f"Sent {sent_count} invitation email(s) by {request.user.username}",
+            )
             messages.success(request, f"Sent {sent_count} invitation(s).")
         if error_count:
             messages.warning(request, f"{error_count} email(s) failed.")
 
-        return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+        return redirect(
+            "admin:programs_program_manage_enrollments", program_id=program_id
+        )
 
     def cancel_enrollment_view(self, request, program_id, enrollment_id):
         """Cancel a pending or awaiting-response enrollment invite."""
@@ -975,18 +1063,27 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
         if not self.has_change_permission(request, program):
             return HttpResponse("Permission denied", status=403)
         if request.method != "POST":
-            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+            return redirect(
+                "admin:programs_program_manage_enrollments", program_id=program_id
+            )
 
         enrollment = get_object_or_404(Enrollment, id=enrollment_id, workshop=program)
         if enrollment.person is not None:
-            messages.error(request, "Cannot cancel — this person has already linked their account.")
+            messages.error(
+                request, "Cannot cancel — this person has already linked their account."
+            )
         else:
-            name = f"{enrollment.first_name or ''} {enrollment.last_name or ''}".strip() or enrollment.email_snap
+            name = (
+                f"{enrollment.first_name or ''} {enrollment.last_name or ''}".strip()
+                or enrollment.email_snap
+            )
             enrollment.delete()
             self.log_change(request, program, f"Cancelled invite for {name}")
             messages.success(request, f"Cancelled invite for {name}.")
 
-        return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+        return redirect(
+            "admin:programs_program_manage_enrollments", program_id=program_id
+        )
 
     def export_invite_csv_view(self, request, program_id):
         """Export pending invites as CSV with personalized invite links."""
@@ -1014,9 +1111,21 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
             invite_url = request.build_absolute_uri(
                 reverse("enrollments:enrollment_respond", args=[e.invite_token])
             )
-            writer.writerow([e.first_name or "", e.last_name or "", e.email_snap or "", e.funding or "", invite_url])
+            writer.writerow(
+                [
+                    e.first_name or "",
+                    e.last_name or "",
+                    e.email_snap or "",
+                    e.funding or "",
+                    invite_url,
+                ]
+            )
 
-        self.log_change(request, program, f"Exported invite links CSV for {enrollments.count()} pending invites")
+        self.log_change(
+            request,
+            program,
+            f"Exported invite links CSV for {enrollments.count()} pending invites",
+        )
         return response
 
     def mark_invites_sent_view(self, request, program_id):
@@ -1025,12 +1134,16 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
         if not self.has_change_permission(request, program):
             return HttpResponse("Permission denied", status=403)
         if request.method != "POST":
-            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+            return redirect(
+                "admin:programs_program_manage_enrollments", program_id=program_id
+            )
 
         enrollment_ids = request.POST.getlist("enrollment_ids")
         if not enrollment_ids:
             messages.warning(request, "No enrollments selected.")
-            return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+            return redirect(
+                "admin:programs_program_manage_enrollments", program_id=program_id
+            )
 
         enrollments = Enrollment.objects.filter(
             id__in=enrollment_ids,
@@ -1047,9 +1160,15 @@ class ProgramAdmin(FrontendEditableAdminMixin, admin.ModelAdmin):
             e.save(update_fields=["invite_token", "invite_sent_at", "invited_by"])
             count += 1
 
-        self.log_change(request, program, f"Marked {count} invite(s) as sent externally by {request.user.username}")
+        self.log_change(
+            request,
+            program,
+            f"Marked {count} invite(s) as sent externally by {request.user.username}",
+        )
         messages.success(request, f"Marked {count} invite(s) as sent (external).")
-        return redirect("admin:programs_program_manage_enrollments", program_id=program_id)
+        return redirect(
+            "admin:programs_program_manage_enrollments", program_id=program_id
+        )
 
 
 # =============================================================================
