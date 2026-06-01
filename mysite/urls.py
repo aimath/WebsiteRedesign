@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import RedirectView
 from programs.views import home, home2
 from mysite.views import robots_txt, view_404, view_403, view_500, health_check
 import debug_toolbar
@@ -15,6 +16,7 @@ handler500 = "mysite.views.view_500"
 urlpatterns = [
     path("robots.txt", robots_txt, name="robots_txt"),
     path("health/", health_check, name="health_check"),
+    path("admin/login/", RedirectView.as_view(url="/accounts/login/", query_string=True)),
     path("admin/", admin.site.urls),
     # Custom accounts URLs first (takes precedence over allauth)
     path("accounts/", include("accounts.urls", "accounts")),
