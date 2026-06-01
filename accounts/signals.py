@@ -42,10 +42,13 @@ def link_orcid_to_people(sender, request, user, **kwargs):
         extra_data = sa.extra_data or {}
         logger.info(f"Extra data from ORCID: {extra_data}")
 
-        # Extract data from ORCID response
-        email = extra_data.get("email") or user.email
-        given_name = extra_data.get("given_name", "")
-        family_name = extra_data.get("family_name", "")
+        # Extract data from ORCID's nested response structure
+        person_data = extra_data.get("person", {})
+        name_data = person_data.get("name", {})
+        given_name = (name_data.get("given-names") or {}).get("value", "")
+        family_name = (name_data.get("family-name") or {}).get("value", "")
+        orcid_emails = person_data.get("emails", {}).get("email", [])
+        email = (orcid_emails[0].get("email") if orcid_emails else None) or user.email or None
 
         with transaction.atomic():
             person = None
@@ -74,9 +77,9 @@ def link_orcid_to_people(sender, request, user, **kwargs):
             if not person:
                 person = People.objects.create(
                     orcid_id=orcid_id,
-                    email_address=email,
-                    first_name=given_name,
-                    last_name=family_name,
+                    email_address=email or None,
+                    first_name=given_name or None,
+                    last_name=family_name or None,
                 )
                 logger.info(f"Created new Person: {person.id}")
 

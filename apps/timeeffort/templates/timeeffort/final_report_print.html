@@ -106,9 +106,9 @@
                   {% endfor %}
                   <td class="center"><strong>{{ line.total_hours }}</strong></td>
                   <td>
-                    {% if wd.timesheet and wd.timesheet.status == "SUBMITTED" %}
+                    {% if report.supervisor_approved_at %}
                       <span style="font-style: italic; font-family: Georgia, serif; font-size: 11pt;">
-                        {{ report.employee_name_snapshot }}
+                        {{ report.supervisor_name_snapshot }}
                       </span>
                     {% else %}
                       <span class="sig-line">&nbsp;</span>
