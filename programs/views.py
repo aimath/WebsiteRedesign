@@ -135,6 +135,12 @@ def home2(request):
     return render(request, "home2.html", {"workshops": workshops, "now": now})
 
 
+def home3(request):
+    workshops = get_upcoming_workshops()
+    now = timezone.now()
+    return render(request, "home3.html", {"workshops": workshops, "now": now})
+
+
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def past_squares(request):
     """
