@@ -3,7 +3,7 @@ from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
-from programs.views import home, home2
+from programs.views import home, home2, home3
 from mysite.views import robots_txt, view_404, view_403, view_500, health_check
 import debug_toolbar
 
@@ -16,7 +16,6 @@ handler500 = "mysite.views.view_500"
 urlpatterns = [
     path("robots.txt", robots_txt, name="robots_txt"),
     path("health/", health_check, name="health_check"),
-    path("admin/login/", RedirectView.as_view(url="/accounts/login/", query_string=True)),
     path("admin/", admin.site.urls),
     # Custom accounts URLs first (takes precedence over allauth)
     path("accounts/", include("accounts.urls", "accounts")),
@@ -31,10 +30,14 @@ urlpatterns = [
     path("timeeffort/", include("apps.timeeffort.urls")),
     path("", include("apps.donations.urls")),
     path("home2/", home2, name="home2"),
+    path("home3/", home3, name="home3"),
     path("", home, name="index"),
     # CMS handles everything else - must be last
     path("", include("cms.urls")),
 ]
+
+if not settings.DEBUG:
+    urlpatterns.insert(0, path("admin/login/", RedirectView.as_view(url="/accounts/login/", query_string=True)))
 
 if settings.DEBUG:
     urlpatterns.insert(0, path("__debug__/", include(debug_toolbar.urls)))

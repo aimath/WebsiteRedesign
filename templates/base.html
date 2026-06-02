@@ -115,9 +115,7 @@
   <body class="d-flex flex-column min-vh-100">
     <a href="#main-content"
        class="visually-hidden visually-hidden-focusable">Skip to main content</a>
-    <header>
-      {% include "includes/navbar.html" %}
-    </header>
+    {% block navbar %}<header>{% include "includes/navbar.html" %}</header>{% endblock navbar %}
     {# ── Time & Effort notification bar ── #}
     {% if user.is_authenticated %}
       {% if te_returned_count %}

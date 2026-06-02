@@ -46,7 +46,11 @@ SALARY_INDIRECT_SLOTS = [
     ("Sick / Personal Day", Activity.Classification.LEAVE, "hours_sick_personal"),
     ("Vacation", Activity.Classification.LEAVE, "hours_vacation"),
     ("Fundraising / PR", Activity.Classification.UNALLOWABLE, "hours_fundraising_pr"),
-    ("Other Unallowable", Activity.Classification.UNALLOWABLE, "hours_other_unallowable"),
+    (
+        "Other Unallowable",
+        Activity.Classification.UNALLOWABLE,
+        "hours_other_unallowable",
+    ),
 ]
 
 
@@ -163,8 +167,7 @@ def _build_salary_rows(profile, week):
         ).values_list("date", flat=True)
     )
     day_dates = {
-        d: week.start_date + timedelta(days=i)
-        for i, d in enumerate(SALARY_DAY_KEYS)
+        d: week.start_date + timedelta(days=i) for i, d in enumerate(SALARY_DAY_KEYS)
     }
 
     # Existing timesheet lines for this week (if any)
@@ -226,7 +229,9 @@ def _build_salary_rows(profile, week):
         Activity.objects.filter(
             is_active=True,
             classification=Activity.Classification.DIRECT,
-        ).exclude(id__in=holiday_activity_ids).order_by("sort_order", "name")
+        )
+        .exclude(id__in=holiday_activity_ids)
+        .order_by("sort_order", "name")
     )
     direct_rows = []
     for act in direct_activities:
@@ -243,13 +248,13 @@ def _build_salary_rows(profile, week):
         else:
             hours = _zero_hours()
             grant = act.default_grant_code
-        direct_rows.append({"activity": act, "grant_code": grant, "hours_pairs": _pairs(hours)})
+        direct_rows.append(
+            {"activity": act, "grant_code": grant, "hours_pairs": _pairs(hours)}
+        )
 
     # --- Indirect / leave / unallowable rows ---
     # Map activity name → SalaryIndirectAllocation field for default pre-fill
-    _indirect_default_map = {
-        name: field for name, _cls, field in SALARY_INDIRECT_SLOTS
-    }
+    _indirect_default_map = {name: field for name, _cls, field in SALARY_INDIRECT_SLOTS}
 
     indirect_activities = list(
         Activity.objects.filter(
@@ -292,7 +297,8 @@ def _build_salary_rows(profile, week):
             default_field = _indirect_default_map.get(act.name)
             default_weekly = (
                 getattr(salary_indirect, default_field, Decimal("0"))
-                if salary_indirect and default_field else Decimal("0")
+                if salary_indirect and default_field
+                else Decimal("0")
             )
             hours = _zero_hours()
             if default_weekly > 0:
@@ -307,27 +313,33 @@ def _build_salary_rows(profile, week):
     for slot_idx, slot_num in enumerate([1, 2]):
         if slot_idx < len(existing_custom):
             line = existing_custom[slot_idx]
-            custom_rows.append({
-                "slot": slot_num,
-                "name": line.custom_activity_name,
-                "grant_code": line.grant_code,
-                "hours_pairs": _pairs(_get_hours(line)),
-            })
+            custom_rows.append(
+                {
+                    "slot": slot_num,
+                    "name": line.custom_activity_name,
+                    "grant_code": line.grant_code,
+                    "hours_pairs": _pairs(_get_hours(line)),
+                }
+            )
         elif slot_idx < len(cf_custom):
             line = cf_custom[slot_idx]
-            custom_rows.append({
-                "slot": slot_num,
-                "name": line.custom_activity_name,
-                "grant_code": line.grant_code,
-                "hours_pairs": _pairs(_get_hours(line, zero_holidays=True)),
-            })
+            custom_rows.append(
+                {
+                    "slot": slot_num,
+                    "name": line.custom_activity_name,
+                    "grant_code": line.grant_code,
+                    "hours_pairs": _pairs(_get_hours(line, zero_holidays=True)),
+                }
+            )
         else:
-            custom_rows.append({
-                "slot": slot_num,
-                "name": "",
-                "grant_code": "",
-                "hours_pairs": _pairs(_zero_hours()),
-            })
+            custom_rows.append(
+                {
+                    "slot": slot_num,
+                    "name": "",
+                    "grant_code": "",
+                    "hours_pairs": _pairs(_zero_hours()),
+                }
+            )
 
     return direct_rows, indirect_rows, custom_rows
 
@@ -400,7 +412,11 @@ def _salary_weekly_entry(request, profile, week):
     if profile.is_hourly:
         display_week_number = week.week_number
     else:
-        display_week_number = week.week_number if week.period.period_index % 2 == 0 else week.week_number + 2
+        display_week_number = (
+            week.week_number
+            if week.period.period_index % 2 == 0
+            else week.week_number + 2
+        )
     holiday_dates = set(
         AIMHoliday.objects.filter(
             date__range=[week.start_date, week.end_date]
@@ -447,7 +463,9 @@ def _salary_weekly_entry(request, profile, week):
             total = timesheet.total_hours
             if total == 0:
                 zero_form = ZeroWeekConfirmForm()
-                direct_rows, indirect_rows, custom_rows = _build_salary_rows(profile, week)
+                direct_rows, indirect_rows, custom_rows = _build_salary_rows(
+                    profile, week
+                )
                 return render(
                     request,
                     "timeeffort/weekly_entry_salary.html",
@@ -526,10 +544,14 @@ def copy_previous_period(request, period_id):
         return redirect("timeeffort:dashboard")
 
     prev_weeks = list(
-        ReportingWeek.objects.filter(period__in=_get_salary_periods(prev_anchor)).order_by("start_date")
+        ReportingWeek.objects.filter(
+            period__in=_get_salary_periods(prev_anchor)
+        ).order_by("start_date")
     )
     curr_weeks = list(
-        ReportingWeek.objects.filter(period__in=_get_salary_periods(period)).order_by("start_date")
+        ReportingWeek.objects.filter(period__in=_get_salary_periods(period)).order_by(
+            "start_date"
+        )
     )
 
     if len(prev_weeks) != len(curr_weeks):
@@ -566,7 +588,11 @@ def copy_previous_period(request, period_id):
         for line in prev_ts.lines.select_related("activity").all():
             if line.activity_id and line.activity_id in holiday_activity_ids:
                 continue
-            if line.activity and line.activity.valid_to and line.activity.valid_to < curr_week.start_date:
+            if (
+                line.activity
+                and line.activity.valid_to
+                and line.activity.valid_to < curr_week.start_date
+            ):
                 continue
             hours = {}
             for d in SALARY_DAY_KEYS:
@@ -608,11 +634,20 @@ def period_summary(request, period_id):
 
     if profile.is_salary:
         all_periods = _get_salary_periods(period)
-        weeks = ReportingWeek.objects.filter(period__in=all_periods).order_by("start_date")
+        weeks = ReportingWeek.objects.filter(period__in=all_periods).order_by(
+            "start_date"
+        )
         # Ensure we always use the anchor (salary-month-start) period for the report lookup
-        anchor_period = all_periods.filter(
-            period_index=period.period_index if period.period_index % 2 == 0 else period.period_index - 1
-        ).first() or period
+        anchor_period = (
+            all_periods.filter(
+                period_index=(
+                    period.period_index
+                    if period.period_index % 2 == 0
+                    else period.period_index - 1
+                )
+            ).first()
+            or period
+        )
         period_end = _get_28day_end(anchor_period)
         period_label = anchor_period.salary_month_label
     else:
@@ -676,7 +711,9 @@ def final_report_describe(request, period_id):
     # Check weeks directly — PeriodReport may not exist yet on first visit.
     # Salary staff span two 14-day periods (28-day window); check all 4 weeks.
     if profile.is_salary:
-        period_weeks = ReportingWeek.objects.filter(period__in=_get_salary_periods(period))
+        period_weeks = ReportingWeek.objects.filter(
+            period__in=_get_salary_periods(period)
+        )
     else:
         period_weeks = period.weeks.all()
     submitted_count = WeeklyTimesheet.objects.filter(
@@ -802,10 +839,26 @@ def final_report_print(request, report_id):
         return redirect("timeeffort:period_summary", period_id=report.period_id)
 
     lines = report.lines.order_by("sort_order", "activity_name_snapshot").all()
-    direct = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.DIRECT]
-    indirect = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.INDIRECT]
-    leave = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.LEAVE]
-    unallowable = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.UNALLOWABLE]
+    direct = [
+        ln
+        for ln in lines
+        if ln.classification_snapshot == Activity.Classification.DIRECT
+    ]
+    indirect = [
+        ln
+        for ln in lines
+        if ln.classification_snapshot == Activity.Classification.INDIRECT
+    ]
+    leave = [
+        ln
+        for ln in lines
+        if ln.classification_snapshot == Activity.Classification.LEAVE
+    ]
+    unallowable = [
+        ln
+        for ln in lines
+        if ln.classification_snapshot == Activity.Classification.UNALLOWABLE
+    ]
 
     weekly_data = []
     if report.submission_type == PeriodReport.SubmissionType.HOURS:
@@ -817,23 +870,30 @@ def final_report_print(request, report_id):
             period__in=salary_periods
         ).order_by("start_date")
         for week in covered_weeks:
-            ts = (
-                WeeklyTimesheet.objects.filter(staff=report.staff, week=week)
-                .first()
-            )
+            ts = WeeklyTimesheet.objects.filter(staff=report.staff, week=week).first()
             lines_qs = (
-                ts.lines.select_related("activity")
-                .order_by("activity__sort_order", "activity__name")
-                .all()
-            ) if ts else []
-            weekly_data.append({
-                "week": week,
-                "timesheet": ts,
-                "lines": lines_qs,
-                "total": ts.total_hours if ts else Decimal("0"),
-            })
+                (
+                    ts.lines.select_related("activity")
+                    .order_by("activity__sort_order", "activity__name")
+                    .all()
+                )
+                if ts
+                else []
+            )
+            weekly_data.append(
+                {
+                    "week": week,
+                    "timesheet": ts,
+                    "lines": lines_qs,
+                    "total": ts.total_hours if ts else Decimal("0"),
+                }
+            )
 
-    period_end = _get_28day_end(report.period) if not report.staff.is_hourly else report.period.end_date
+    period_end = (
+        _get_28day_end(report.period)
+        if not report.staff.is_hourly
+        else report.period.end_date
+    )
 
     return render(
         request,
@@ -894,7 +954,9 @@ def _get_28day_end(period):
 
 def _get_salary_periods(period):
     """Return the two ReportingPeriods that form the 28-day salary window containing period."""
-    anchor_idx = period.period_index if period.period_index % 2 == 0 else period.period_index - 1
+    anchor_idx = (
+        period.period_index if period.period_index % 2 == 0 else period.period_index - 1
+    )
     return ReportingPeriod.objects.filter(
         calendar=period.calendar,
         period_index__in=[anchor_idx, anchor_idx + 1],
@@ -948,8 +1010,7 @@ def _period_sort_key(summary):
         return (0, -period_end.toordinal())
 
     has_any_timesheet = any(
-        ws.get("timesheet") is not None
-        for ws in summary.get("week_statuses", [])
+        ws.get("timesheet") is not None for ws in summary.get("week_statuses", [])
     )
     has_activity = has_any_timesheet or report is not None
     is_near = abs((period_end - today).days) <= 60
@@ -984,21 +1045,25 @@ def _hourly_dashboard(request, profile):
         week_statuses = []
         for week in weeks:
             ts = WeeklyTimesheet.objects.filter(staff=profile, week=week).first()
-            week_statuses.append({"week": week, "timesheet": ts, "display_number": week.week_number})
+            week_statuses.append(
+                {"week": week, "timesheet": ts, "display_number": week.week_number}
+            )
 
         outstanding = [ws for ws in week_statuses if ws["week"].id not in submitted_ids]
         report = PeriodReport.objects.filter(staff=profile, period=period).first()
 
-        period_summaries.append({
-            "period": period,
-            "period_label": period.label,
-            "period_end": period.end_date,
-            "total_weeks": len(weeks),
-            "submitted_count": len(submitted_ids),
-            "outstanding_weeks": outstanding,
-            "week_statuses": week_statuses,
-            "report": report,
-        })
+        period_summaries.append(
+            {
+                "period": period,
+                "period_label": period.label,
+                "period_end": period.end_date,
+                "total_weeks": len(weeks),
+                "submitted_count": len(submitted_ids),
+                "outstanding_weeks": outstanding,
+                "week_statuses": week_statuses,
+                "report": report,
+            }
+        )
 
     period_summaries.sort(key=_period_sort_key)
 
@@ -1010,7 +1075,8 @@ def _hourly_dashboard(request, profile):
     ]
     returned_reports = (
         PeriodReport.objects.filter(staff=profile, status=PeriodReport.Status.RETURNED)
-        .select_related("period").order_by("-returned_at")
+        .select_related("period")
+        .order_by("-returned_at")
     )
     recent_reports = (
         PeriodReport.objects.filter(staff=profile, status__in=_SUBMITTED_STATUSES)
@@ -1019,15 +1085,19 @@ def _hourly_dashboard(request, profile):
         .order_by("-period__start_date")[:3]
     )
 
-    return render(request, "timeeffort/dashboard_weekly.html", {
-        "profile": profile,
-        "period_summaries": period_summaries,
-        "returned_reports": returned_reports,
-        "recent_reports": recent_reports,
-        "available_years": available_years,
-        "selected_year": selected_year,
-        "is_salary": False,
-    })
+    return render(
+        request,
+        "timeeffort/dashboard_weekly.html",
+        {
+            "profile": profile,
+            "period_summaries": period_summaries,
+            "returned_reports": returned_reports,
+            "recent_reports": recent_reports,
+            "available_years": available_years,
+            "selected_year": selected_year,
+            "is_salary": False,
+        },
+    )
 
 
 def _salary_dashboard(request, profile):
@@ -1035,7 +1105,9 @@ def _salary_dashboard(request, profile):
     available_years, selected_year = _get_year_filter(request)
 
     candidates = list(
-        ReportingPeriod.objects.filter(start_date__year=selected_year).order_by("-start_date")
+        ReportingPeriod.objects.filter(start_date__year=selected_year).order_by(
+            "-start_date"
+        )
     )
     active_pairs = [p for p in candidates if p.is_salary_month_start]
 
@@ -1043,7 +1115,9 @@ def _salary_dashboard(request, profile):
     for period in active_pairs:
         end_date = _get_28day_end(period)
         all_periods = _get_salary_periods(period)
-        all_weeks = ReportingWeek.objects.filter(period__in=all_periods).order_by("start_date")
+        all_weeks = ReportingWeek.objects.filter(period__in=all_periods).order_by(
+            "start_date"
+        )
 
         submitted_ids = set(
             WeeklyTimesheet.objects.filter(
@@ -1057,9 +1131,16 @@ def _salary_dashboard(request, profile):
         week_statuses = []
         for display_num, week in enumerate(all_weeks, start=1):
             ts = WeeklyTimesheet.objects.filter(staff=profile, week=week).first()
-            week_statuses.append({"week": week, "timesheet": ts, "display_number": display_num})
+            week_statuses.append(
+                {"week": week, "timesheet": ts, "display_number": display_num}
+            )
 
-        outstanding = [ws for ws in week_statuses if not ws["timesheet"] or ws["timesheet"].status != WeeklyTimesheet.Status.SUBMITTED]
+        outstanding = [
+            ws
+            for ws in week_statuses
+            if not ws["timesheet"]
+            or ws["timesheet"].status != WeeklyTimesheet.Status.SUBMITTED
+        ]
 
         has_prev = ReportingPeriod.objects.filter(
             calendar=period.calendar,
@@ -1068,19 +1149,21 @@ def _salary_dashboard(request, profile):
         holiday_count = AIMHoliday.objects.filter(
             date__range=[period.start_date, end_date]
         ).count()
-        period_summaries.append({
-            "period": period,
-            "period_label": period.salary_month_label,
-            "period_end": end_date,
-            "total_weeks": all_weeks.count(),
-            "submitted_count": len(submitted_ids),
-            "outstanding_weeks": outstanding,
-            "week_statuses": week_statuses,
-            "report": report,
-            "has_prev": has_prev,
-            "holiday_count": holiday_count,
-            "has_submitted": len(submitted_ids) == all_weeks.count(),
-        })
+        period_summaries.append(
+            {
+                "period": period,
+                "period_label": period.salary_month_label,
+                "period_end": end_date,
+                "total_weeks": all_weeks.count(),
+                "submitted_count": len(submitted_ids),
+                "outstanding_weeks": outstanding,
+                "week_statuses": week_statuses,
+                "report": report,
+                "has_prev": has_prev,
+                "holiday_count": holiday_count,
+                "has_submitted": len(submitted_ids) == all_weeks.count(),
+            }
+        )
 
     period_summaries.sort(key=_period_sort_key)
 
@@ -1092,24 +1175,29 @@ def _salary_dashboard(request, profile):
     ]
     returned_reports = (
         PeriodReport.objects.filter(staff=profile, status=PeriodReport.Status.RETURNED)
-        .select_related("period").order_by("-returned_at")
+        .select_related("period")
+        .order_by("-returned_at")
     )
     recent_reports = (
         PeriodReport.objects.filter(staff=profile, status__in=_SUBMITTED_STATUSES)
         .exclude(status=PeriodReport.Status.RETURNED)
         .select_related("period")
-        .order_by("-period__start_date")[:5]
+        .order_by("-period__end_date")[:5]
     )
 
-    return render(request, "timeeffort/dashboard_weekly.html", {
-        "profile": profile,
-        "period_summaries": period_summaries,
-        "is_salary": True,
-        "returned_reports": returned_reports,
-        "recent_reports": recent_reports,
-        "available_years": available_years,
-        "selected_year": selected_year,
-    })
+    return render(
+        request,
+        "timeeffort/dashboard_weekly.html",
+        {
+            "profile": profile,
+            "period_summaries": period_summaries,
+            "is_salary": True,
+            "returned_reports": returned_reports,
+            "recent_reports": recent_reports,
+            "available_years": available_years,
+            "selected_year": selected_year,
+        },
+    )
 
 
 def _invalidate_period_report_pdf(profile, period):
@@ -1119,7 +1207,11 @@ def _invalidate_period_report_pdf(profile, period):
     a fresh rollup and PDF regeneration.
     """
     if not profile.is_hourly:
-        anchor_idx = period.period_index if period.period_index % 2 == 0 else period.period_index - 1
+        anchor_idx = (
+            period.period_index
+            if period.period_index % 2 == 0
+            else period.period_index - 1
+        )
         try:
             anchor_period = ReportingPeriod.objects.get(
                 calendar=period.calendar, period_index=anchor_idx
@@ -1172,7 +1264,8 @@ def _director_dashboard(request, profile):
     has_defaults = DirectorDefaultAllocation.objects.filter(profile=profile).exists()
     returned_reports = (
         PeriodReport.objects.filter(staff=profile, status=PeriodReport.Status.RETURNED)
-        .select_related("period").order_by("-returned_at")
+        .select_related("period")
+        .order_by("-returned_at")
     )
     recent_reports = (
         PeriodReport.objects.filter(
@@ -1187,15 +1280,19 @@ def _director_dashboard(request, profile):
         .order_by("-period__start_date")[:5]
     )
 
-    return render(request, "timeeffort/dashboard_director.html", {
-        "profile": profile,
-        "period_summaries": period_summaries,
-        "has_defaults": has_defaults,
-        "returned_reports": returned_reports,
-        "recent_reports": recent_reports,
-        "available_years": available_years,
-        "selected_year": selected_year,
-    })
+    return render(
+        request,
+        "timeeffort/dashboard_director.html",
+        {
+            "profile": profile,
+            "period_summaries": period_summaries,
+            "has_defaults": has_defaults,
+            "returned_reports": returned_reports,
+            "recent_reports": recent_reports,
+            "available_years": available_years,
+            "selected_year": selected_year,
+        },
+    )
 
 
 @login_required
@@ -1232,7 +1329,10 @@ def director_period_entry(request, period_id):
         form = DirectorPeriodEntryForm(request.POST, holiday_pct=holiday_pct)
         if form.is_valid():
             _save_director_report_lines(
-                report, form.cleaned_data, holiday_pct, form.cleaned_data.get("main_grant_code", "")
+                report,
+                form.cleaned_data,
+                holiday_pct,
+                form.cleaned_data.get("main_grant_code", ""),
             )
             if action == "submit":
                 report.submit()
@@ -1334,7 +1434,12 @@ def _save_director_report_lines(report, cleaned, holiday_pct, main_grant_code=""
             Activity.Classification.LEAVE,
         ),
         ("Vacation", "pct_vacation", "desc_vacation", Activity.Classification.LEAVE),
-        ("Employer Holiday", "pct_holiday", "desc_holiday", Activity.Classification.INDIRECT),
+        (
+            "Employer Holiday",
+            "pct_holiday",
+            "desc_holiday",
+            Activity.Classification.INDIRECT,
+        ),
         (
             "Fundraising / PR",
             "pct_fundraising_pr",
@@ -1463,7 +1568,7 @@ def _defaults_to_form_data(profile, holiday_pct):
 
 @login_required
 def all_reports(request):
-    if not request.user.is_staff:
+    if not request.user.has_perm("timeeffort.view_all_reports"):
         raise Http404
 
     available_years, selected_year = _get_year_filter(request)
@@ -1480,7 +1585,7 @@ def all_reports(request):
             period__start_date__year=selected_year,
         )
         .select_related("staff__user", "period")
-        .order_by("employee_name_snapshot", "-period__start_date")
+        .order_by("-period__start_date", "employee_name_snapshot")
     )
 
     if staff_type_filter:
@@ -1527,10 +1632,14 @@ def supervisor_queue(request):
         .select_related("staff__user", "period")
         .order_by("-updated_at")[:20]
     )
-    return render(request, "timeeffort/supervisor_queue.html", {
-        "pending": pending,
-        "recent": recent,
-    })
+    return render(
+        request,
+        "timeeffort/supervisor_queue.html",
+        {
+            "pending": pending,
+            "recent": recent,
+        },
+    )
 
 
 @login_required
@@ -1546,54 +1655,93 @@ def supervisor_review(request, report_id):
         action = request.POST.get("action")
         if action == "approve" and report.status == PeriodReport.Status.SUBMITTED:
             report.supervisor_approve(request.user)
-            messages.success(request, f"Report for {report.employee_name_snapshot} approved.")
+            messages.success(
+                request, f"Report for {report.employee_name_snapshot} approved."
+            )
             return redirect("timeeffort:supervisor_queue")
         elif action == "return":
             notes = request.POST.get("supervisor_notes", "").strip()
             if not notes:
-                messages.error(request, "Please provide a reason for returning the report.")
+                messages.error(
+                    request, "Please provide a reason for returning the report."
+                )
             else:
                 report.return_report(request.user, notes)
-                messages.success(request, f"Report returned to {report.employee_name_snapshot} with comments.")
+                messages.success(
+                    request,
+                    f"Report returned to {report.employee_name_snapshot} with comments.",
+                )
                 return redirect("timeeffort:supervisor_queue")
 
     lines = report.lines.order_by("sort_order", "activity_name_snapshot").all()
-    direct = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.DIRECT]
-    indirect = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.INDIRECT]
-    leave = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.LEAVE]
-    unallowable = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.UNALLOWABLE]
+    direct = [
+        ln
+        for ln in lines
+        if ln.classification_snapshot == Activity.Classification.DIRECT
+    ]
+    indirect = [
+        ln
+        for ln in lines
+        if ln.classification_snapshot == Activity.Classification.INDIRECT
+    ]
+    leave = [
+        ln
+        for ln in lines
+        if ln.classification_snapshot == Activity.Classification.LEAVE
+    ]
+    unallowable = [
+        ln
+        for ln in lines
+        if ln.classification_snapshot == Activity.Classification.UNALLOWABLE
+    ]
 
     weekly_data = []
     if report.submission_type == PeriodReport.SubmissionType.HOURS:
         salary_periods = _get_salary_periods(report.period)
-        covered_weeks = ReportingWeek.objects.filter(period__in=salary_periods).order_by("start_date")
+        covered_weeks = ReportingWeek.objects.filter(
+            period__in=salary_periods
+        ).order_by("start_date")
         for week in covered_weeks:
             ts = WeeklyTimesheet.objects.filter(staff=report.staff, week=week).first()
             lines_qs = (
-                ts.lines.select_related("activity")
-                .order_by("activity__sort_order", "activity__name")
-                .all()
-            ) if ts else []
-            weekly_data.append({
-                "week": week,
-                "timesheet": ts,
-                "lines": lines_qs,
-                "total": ts.total_hours if ts else Decimal("0"),
-            })
+                (
+                    ts.lines.select_related("activity")
+                    .order_by("activity__sort_order", "activity__name")
+                    .all()
+                )
+                if ts
+                else []
+            )
+            weekly_data.append(
+                {
+                    "week": week,
+                    "timesheet": ts,
+                    "lines": lines_qs,
+                    "total": ts.total_hours if ts else Decimal("0"),
+                }
+            )
 
-    period_end = _get_28day_end(report.period) if not report.staff.is_hourly else report.period.end_date
+    period_end = (
+        _get_28day_end(report.period)
+        if not report.staff.is_hourly
+        else report.period.end_date
+    )
 
-    return render(request, "timeeffort/supervisor_review.html", {
-        "report": report,
-        "period": report.period,
-        "period_end": period_end,
-        "direct_lines": direct,
-        "indirect_lines": indirect,
-        "leave_lines": leave,
-        "unallowable_lines": unallowable,
-        "weekly_data": weekly_data,
-        "total_hours": report.total_hours,
-        "is_pct_report": report.submission_type == PeriodReport.SubmissionType.PCT,
-        "day_labels": SALARY_DAY_LABELS,
-        "generated_at": timezone.now(),
-    })
+    return render(
+        request,
+        "timeeffort/supervisor_review.html",
+        {
+            "report": report,
+            "period": report.period,
+            "period_end": period_end,
+            "direct_lines": direct,
+            "indirect_lines": indirect,
+            "leave_lines": leave,
+            "unallowable_lines": unallowable,
+            "weekly_data": weekly_data,
+            "total_hours": report.total_hours,
+            "is_pct_report": report.submission_type == PeriodReport.SubmissionType.PCT,
+            "day_labels": SALARY_DAY_LABELS,
+            "generated_at": timezone.now(),
+        },
+    )

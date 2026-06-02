@@ -38,6 +38,9 @@ class StaffTimesheetProfile(models.Model):
     class Meta:
         verbose_name = "Staff Timesheet Profile"
         verbose_name_plural = "Staff Timesheet Profiles"
+        permissions = [
+            ("view_all_reports", "Can view all staff time & effort reports"),
+        ]
 
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} ({self.get_staff_type_display()})"
