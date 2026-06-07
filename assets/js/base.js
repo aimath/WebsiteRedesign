@@ -85,6 +85,51 @@
   });
 })();
 
+// Mobile nav: first tap expands dropdown, second tap navigates.
+// Dropdowns have no data-bs-toggle so they navigate on desktop hover.
+// On mobile we manually manage open/close.
+(function () {
+  function closeMobileDropdowns(except) {
+    document.querySelectorAll(".nav-item.dropdown.mobile-open").forEach(function (item) {
+      if (item !== except) {
+        item.classList.remove("mobile-open");
+        item.querySelector(".dropdown-menu").classList.remove("show");
+        item.querySelector(".nav-link").setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    if (window.innerWidth > 800) return;
+
+    const link = e.target.closest(".nav-item.dropdown > .nav-link");
+    if (link) {
+      const item = link.parentElement;
+      const menu = item.querySelector(".dropdown-menu");
+
+      if (!item.classList.contains("mobile-open")) {
+        // First tap: expand, prevent navigation
+        e.preventDefault();
+        closeMobileDropdowns(item);
+        item.classList.add("mobile-open");
+        menu.classList.add("show");
+        link.setAttribute("aria-expanded", "true");
+      } else {
+        // Second tap: let navigation happen, close menu
+        item.classList.remove("mobile-open");
+        menu.classList.remove("show");
+        link.setAttribute("aria-expanded", "false");
+      }
+      return;
+    }
+
+    // Tap outside any dropdown — close all
+    if (!e.target.closest(".nav-item.dropdown")) {
+      closeMobileDropdowns(null);
+    }
+  });
+})();
+
 const prev = document.getElementById("prev-btn");
 const next = document.getElementById("next-btn");
 const list = document.getElementById("horizontal-container");

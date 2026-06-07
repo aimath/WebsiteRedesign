@@ -238,6 +238,7 @@ SOCIALACCOUNT_STORE_TOKENS = True
 SOCIALACCOUNT_AUTO_SIGNUP = True  # Allow automatic user creation on OAuth login
 SOCIALACCOUNT_EMAIL_REQUIRED = False  # ORCID might not return email
 SOCIALACCOUNT_ONLY = True  # Disable password-based authentication (OAuth only)
+ACCOUNT_LOGIN_METHODS = set()  # No direct login methods — social accounts only
 
 # Use username for login (required for OAuth without unique email)
 ACCOUNT_SIGNUP_FIELDS = ["username"]  # Minimal signup - username only

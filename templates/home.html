@@ -4,12 +4,39 @@
 {% block title %}
   Home
 {% endblock title %}
+
+{% block navbar %}{% endblock navbar %}
+
 {% block content %}
-  <section aria-label="American Institute of Mathematics Banner">
-    <div class="home-banner">
-      <img src="{% static 'images/banner2new.jpg' %}"
-           class="banner-photo"
-           alt="American Institute of Mathematics home banner" />
+  <section class="hero-integrated" aria-label="American Institute of Mathematics">
+    <div class="hero-img-wrap" aria-hidden="true">
+      <img src="{% static 'images/home_banner.png' %}"
+           class="hero-integrated-bg"
+           alt="" />
+    </div>
+    <div class="hero-content-layer">
+      <div class="hero-nav-area">
+        <nav class="hero-nav navbar navbar-expand-xl navbar-dark"
+             aria-label="Main navigation"
+             id="hero-navbar">
+          <div class="container-fluid px-2">
+            <button class="navbar-toggler ms-auto"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#hero-nav-collapse"
+                    aria-controls="hero-nav-collapse"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="hero-nav-collapse">
+              <ul class="navbar-nav gap-1">
+                {% include "includes/nav_items.html" %}
+              </ul>
+            </div>
+          </div>
+        </nav>
+      </div>
     </div>
   </section>
   {% comment %} <section aria-label="propose a research activity announcement">
