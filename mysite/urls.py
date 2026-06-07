@@ -28,6 +28,8 @@ urlpatterns = [
     path("enrollments/", include("enrollments.urls")),
     path("checklists/", include("apps.checklists.urls")),
     path("timeeffort/", include("apps.timeeffort.urls")),
+    path("frg/", include("apps.frg.urls")),
+    path("recordings/", include("apps.recordings.urls")),
     path("", include("apps.donations.urls")),
     path("home2/", home2, name="home2"),
     path("home3/", home3, name="home3"),

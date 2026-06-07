@@ -70,6 +70,7 @@ class EventAdmin(admin.ModelAdmin):
                 "fields": (
                     "is_free",
                     "price",
+                    "price_label",
                     "external_ticket_url",
                     "capacity",
                     "registration_required",
