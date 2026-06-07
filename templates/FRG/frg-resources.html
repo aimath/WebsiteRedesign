@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load cms_tags sekizai_tags %}
 {% load static %}
 
 {% block title %}FRG Resources{% endblock %}
@@ -22,7 +21,15 @@
       </div>
       <div class="col-lg-9">
         <div class="section-content">
-          {% placeholder "pdf_list" %}
+          <ul class="list-unstyled">
+            {% for pdf in pdf_files %}
+              <li class="mb-2">
+                <a href="{{ pdf.url }}" target="_blank" rel="noopener">{{ pdf.original_filename }}</a>
+              </li>
+            {% empty %}
+              <p class="text-muted">No resources available.</p>
+            {% endfor %}
+          </ul>
         </div>
       </div>
     </div>

@@ -94,6 +94,11 @@ class Event(models.Model):
 
     # Tickets & Registration
     is_free = models.BooleanField(default=True)
+    price_label = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text='Override the price display text (e.g. "Free – RSVP required"). Leave blank to use the default.',
+    )
     price = models.DecimalField(
         max_digits=8,
         decimal_places=2,
@@ -177,7 +182,8 @@ class Event(models.Model):
 
     @property
     def price_display(self):
-        """Display price or 'Free'."""
+        if self.price_label:
+            return self.price_label
         if self.is_free or not self.price:
             return "Free"
         return f"${self.price:.2f}"

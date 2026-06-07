@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ program.title }} — Recordings{% endblock %}
+
+{% block content %}
+  <div class="header-banner">
+    <div class="container py-3">
+      <p class="section-label mb-1">{{ program.get_program_type_display }}</p>
+      <h1 class="h3 mb-0">{{ program.title }}</h1>
+      <p class="text-muted small mb-0 mt-1">
+        {{ program.start_date|date:"N j, Y" }}
+        &middot; {{ recording_count }} recording{{ recording_count|pluralize }}
+      </p>
+    </div>
+  </div>
+
+  <div class="container py-4">
+
+    {% if program.description %}
+      <p class="mb-4">{{ program.description }}</p>
+    {% endif %}
+
+    <a href="{% url 'recordings:program-list' %}" class="text-decoration-none small fw-semibold" style="color:var(--aimblue)">
+      &larr; All recordings
+    </a>
+
+    <div class="mt-4">
+      {% if recordings_by_day %}
+        {% for date, day_recordings in recordings_by_day %}
+
+          {# Show date heading only for multi-day programs (workshops) #}
+          {% if is_multiday %}
+            <h2 class="h6 text-uppercase fw-semibold mb-3 mt-4 border-bottom pb-1" style="color:var(--aimblue);letter-spacing:.05em;">
+              {{ date|date:"l, N j, Y" }}
+            </h2>
+          {% endif %}
+
+          {% for recording in day_recordings %}
+            <div class="card border-0 shadow-sm mb-3">
+              <div class="card-body">
+                <div class="row g-3 align-items-start">
+
+                  {# Vimeo thumbnail/embed column #}
+                  {% if recording.embed_url %}
+                    <div class="col-md-4">
+                      <div class="ratio ratio-16x9">
+                        <iframe src="{{ recording.embed_url }}"
+                                title="{{ recording.title }}"
+                                allow="autoplay; fullscreen; picture-in-picture"
+                                allowfullscreen
+                                loading="lazy"
+                                style="border:0"></iframe>
+                      </div>
+                    </div>
+                  {% endif %}
+
+                  {# Metadata column #}
+                  <div class="{% if recording.embed_url %}col-md-8{% else %}col-12{% endif %}">
+                    <h3 class="h6 mb-1 fw-semibold">{{ recording.title }}</h3>
+                    <p class="mb-1 small text-muted">
+                      {{ recording.speaker }}
+                      &middot;
+                      <time datetime="{{ recording.recorded_at|date:'c' }}">
+                        {{ recording.recorded_at|date:"g:i A" }}
+                      </time>
+                    </p>
+                    {% if recording.description %}
+                      <p class="small mb-2">{{ recording.description }}</p>
+                    {% endif %}
+                    <a href="{{ recording.vimeo_url }}"
+                       target="_blank"
+                       rel="noopener"
+                       class="btn btn-sm btn-outline-primary">
+                      ▶ Watch on Vimeo
+                    </a>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+
+        {% endfor %}
+      {% else %}
+        <p class="text-muted">No recordings yet.</p>
+      {% endif %}
+    </div>
+
+  </div>
+{% endblock content %}

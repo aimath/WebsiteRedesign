@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "apps.events",
     "apps.checklists.apps.ChecklistsConfig",
     "apps.timeeffort.apps.TimeEffortConfig",
+    "apps.recordings.apps.RecordingsConfig",
     "accounts",
     "programs",
     "people",
@@ -186,12 +187,12 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # Must be right after SecurityMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # "django.middleware.locale.LocaleMiddleware",  # Disabled - no i18n URL prefixes
     "cms.middleware.user.CurrentUserMiddleware",
     "cms.middleware.page.CurrentPageMiddleware",
     "cms.middleware.toolbar.ToolbarMiddleware",
@@ -238,10 +239,6 @@ SOCIALACCOUNT_STORE_TOKENS = True
 SOCIALACCOUNT_AUTO_SIGNUP = True  # Allow automatic user creation on OAuth login
 SOCIALACCOUNT_EMAIL_REQUIRED = False  # ORCID might not return email
 SOCIALACCOUNT_ONLY = True  # Disable password-based authentication (OAuth only)
-ACCOUNT_LOGIN_METHODS = set()  # No direct login methods — social accounts only
-
-# Use username for login (required for OAuth without unique email)
-ACCOUNT_SIGNUP_FIELDS = ["username"]  # Minimal signup - username only
 
 # Disable features not needed for OAuth-only authentication
 ACCOUNT_CHANGE_EMAIL = False  # Users can't change email (managed in profile)
@@ -279,15 +276,6 @@ DJANGOCMS_VERSIONING_ALLOW_DELETING_VERSIONS = True
 
 CMS_TEMPLATES = [
     ("new_page_template.html", "New Page Template"),
-    # === OLD TEMPLATES (DEPRECATED - Use new route-based versions below) ===
-    ("cms_templates/about.html", "About (OLD - DEPRECATED)"),
-    (
-        "cms_templates/focused-landing.html",
-        "Focused Collaborative Research (OLD - DEPRECATED)",
-    ),
-    ("cms_templates/joyfulmathematics.html", "Joyful Mathematics (OLD - DEPRECATED)"),
-    ("cms_templates/visiting.html", "Visiting (OLD - DEPRECATED)"),
-    ("cms_templates/resources.html", "Resources (OLD - DEPRECATED)"),
     # === FOCUSED RESEARCH SECTION ===
     ("cms_templates/focused_research/landing.html", "Focused Research - Overview"),
     (
@@ -356,7 +344,6 @@ CMS_TEMPLATES = [
         "cms_templates/resources/open_textbook.html",
         "Resources - Open Textbook Initiative",
     ),
-    ("cms_templates/resources/videos.html", "Resources - Videos"),
     ("cms_templates/resources/problem_lists.html", "Resources - Problem Lists"),
     ("cms_templates/resources/preprint_series.html", "Resources - Preprint Series"),
     ("cms_templates/resources/published_papers.html", "Resources - Published Papers"),
@@ -369,12 +356,6 @@ CMS_TEMPLATES = [
     ("cms_templates/about/diversity_statement.html", "About - Diversity"),
     ("cms_templates/about/mission_history.html", "About - Mission & History"),
     # === OTHER ===
-    ("cms_templates/news.html", "News Template"),
-    ("FRG/frg-resources.html", "FRG Resources"),
-    ("FRG/pdf_list.html", "FRG Resources list"),
-    ("FRG/frg-activities.html", "FRG Activities"),
-    ("FRG/frg-landing.html", "FRG Landing Page"),
-    ("FRG/frg-papers.html", "FRG Papers"),
     ("donate.html", "Donation Page"),
     ("programs/workshops_base.html", "Workshop Page"),
 ]
