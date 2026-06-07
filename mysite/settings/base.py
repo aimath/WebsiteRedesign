@@ -488,3 +488,4 @@ DONATION_RECEIPT_FROM_EMAIL = env(
 )
 WORKSHOPS_FROM_EMAIL = env("WORKSHOPS_FROM_EMAIL", default="dfinkle@aimath.org")
 INVITATIONS_FROM_EMAIL = env("INVITATIONS_FROM_EMAIL", default="dfinkle@aimath.org")
+TIMEEFFORT_FROM_EMAIL = env("TIMEEFFORT_FROM_EMAIL", default="timesheets@aimath.org")

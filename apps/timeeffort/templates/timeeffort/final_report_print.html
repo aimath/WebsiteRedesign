@@ -124,104 +124,97 @@
           </table>
         {% endfor %}
       {% endif %}
-      {# ── Rolled-up effort tables ──────────────────────────────────── #}
-      <div class="section-title" style="margin-top: 18px;">Direct Activities</div>
-      <table class="rpt-table">
-        <thead>
-          <tr>
-            <th style="width:30%">Activity</th>
-            <th style="width:14%">Grant / Code</th>
-            <th>Duties, Activity, and Work Performed</th>
-            {% if not is_pct_report %}
-              <th class="center" style="width:7%">Hours</th>
-            {% endif %}
-            <th class="center" style="width:8%">% of Time</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for line in direct_lines %}
+      {# ── Rolled-up effort tables — only render sections that have data ── #}
+      {% if direct_lines %}
+        <div class="section-title" style="margin-top: 18px;">Direct Activities</div>
+        <table class="rpt-table">
+          <thead>
             <tr>
-              <td>{{ line.activity_name_snapshot }}</td>
-              <td class="center">{{ line.grant_code_snapshot|default:"—" }}</td>
-              <td>{{ line.duties_description }}</td>
-              {% if not is_pct_report %}<td class="center">{{ line.total_hours }}</td>{% endif %}
-              <td class="center">{{ line.percentage }}%</td>
+              <th style="width:30%">Activity</th>
+              <th style="width:14%">Grant / Code</th>
+              <th>Duties, Activity, and Work Performed</th>
+              {% if not is_pct_report %}
+                <th class="center" style="width:7%">Hours</th>
+              {% endif %}
+              <th class="center" style="width:8%">% of Time</th>
             </tr>
-          {% empty %}
-            <tr class="none-row">
-              <td colspan="{% if is_pct_report %}4{% else %}5{% endif %}">No direct activities reported this period.</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <div class="section-title">Indirect Activities</div>
-      <table class="rpt-table">
-        <thead>
-          <tr>
-            <th style="width:30%">Activity</th>
-            <th style="width:14%">Grant / Code</th>
-            <th>Duties, Activity, and Work Performed</th>
-            {% if not is_pct_report %}
-              <th class="center" style="width:7%">Hours</th>
-            {% endif %}
-            <th class="center" style="width:8%">% of Time</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for line in indirect_lines %}
+          </thead>
+          <tbody>
+            {% for line in direct_lines %}
+              <tr>
+                <td>{{ line.activity_name_snapshot }}</td>
+                <td class="center">{{ line.grant_code_snapshot|default:"—" }}</td>
+                <td>{{ line.duties_description }}</td>
+                {% if not is_pct_report %}<td class="center">{{ line.total_hours }}</td>{% endif %}
+                <td class="center">{{ line.percentage }}%</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+      {% if indirect_lines or leave_lines %}
+        <div class="section-title">Indirect Activities</div>
+        <table class="rpt-table">
+          <thead>
             <tr>
-              <td>{{ line.activity_name_snapshot }}</td>
-              <td class="center">{{ line.grant_code_snapshot|default:"—" }}</td>
-              <td>{{ line.duties_description }}</td>
-              {% if not is_pct_report %}<td class="center">{{ line.total_hours }}</td>{% endif %}
-              <td class="center">{{ line.percentage }}%</td>
+              <th style="width:30%">Activity</th>
+              <th style="width:14%">Grant / Code</th>
+              <th>Duties, Activity, and Work Performed</th>
+              {% if not is_pct_report %}
+                <th class="center" style="width:7%">Hours</th>
+              {% endif %}
+              <th class="center" style="width:8%">% of Time</th>
             </tr>
-          {% endfor %}
-          {% for line in leave_lines %}
+          </thead>
+          <tbody>
+            {% for line in indirect_lines %}
+              <tr>
+                <td>{{ line.activity_name_snapshot }}</td>
+                <td class="center">{{ line.grant_code_snapshot|default:"—" }}</td>
+                <td>{{ line.duties_description }}</td>
+                {% if not is_pct_report %}<td class="center">{{ line.total_hours }}</td>{% endif %}
+                <td class="center">{{ line.percentage }}%</td>
+              </tr>
+            {% endfor %}
+            {% for line in leave_lines %}
+              <tr>
+                <td>{{ line.activity_name_snapshot }}</td>
+                <td class="center">—</td>
+                <td>{{ line.duties_description }}</td>
+                {% if not is_pct_report %}<td class="center">{{ line.total_hours }}</td>{% endif %}
+                <td class="center">{{ line.percentage }}%</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+      {% if unallowable_lines %}
+        <div class="section-title">Unallowable Activities</div>
+        <table class="rpt-table">
+          <thead>
             <tr>
-              <td>{{ line.activity_name_snapshot }}</td>
-              <td class="center">—</td>
-              <td>{{ line.duties_description }}</td>
-              {% if not is_pct_report %}<td class="center">{{ line.total_hours }}</td>{% endif %}
-              <td class="center">{{ line.percentage }}%</td>
+              <th style="width:30%">Activity</th>
+              <th style="width:14%">Grant / Code</th>
+              <th>Duties, Activity, and Work Performed</th>
+              {% if not is_pct_report %}
+                <th class="center" style="width:7%">Hours</th>
+              {% endif %}
+              <th class="center" style="width:8%">% of Time</th>
             </tr>
-          {% endfor %}
-          {% if not indirect_lines and not leave_lines %}
-            <tr class="none-row">
-              <td colspan="{% if is_pct_report %}4{% else %}5{% endif %}">No indirect activities reported this period.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-      <div class="section-title">Unallowable Activities</div>
-      <table class="rpt-table">
-        <thead>
-          <tr>
-            <th style="width:30%">Activity</th>
-            <th style="width:14%">Grant / Code</th>
-            <th>Duties, Activity, and Work Performed</th>
-            {% if not is_pct_report %}
-              <th class="center" style="width:7%">Hours</th>
-            {% endif %}
-            <th class="center" style="width:8%">% of Time</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for line in unallowable_lines %}
-            <tr>
-              <td>{{ line.activity_name_snapshot }}</td>
-              <td class="center">{{ line.grant_code_snapshot|default:"—" }}</td>
-              <td>{{ line.duties_description }}</td>
-              {% if not is_pct_report %}<td class="center">{{ line.total_hours }}</td>{% endif %}
-              <td class="center">{{ line.percentage }}%</td>
-            </tr>
-          {% empty %}
-            <tr class="none-row">
-              <td colspan="{% if is_pct_report %}4{% else %}5{% endif %}">No unallowable activities reported this period.</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for line in unallowable_lines %}
+              <tr>
+                <td>{{ line.activity_name_snapshot }}</td>
+                <td class="center">{{ line.grant_code_snapshot|default:"—" }}</td>
+                <td>{{ line.duties_description }}</td>
+                {% if not is_pct_report %}<td class="center">{{ line.total_hours }}</td>{% endif %}
+                <td class="center">{{ line.percentage }}%</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
       <table class="rpt-table" style="margin-top: 0;">
         <tbody>
           <tr class="total-row">

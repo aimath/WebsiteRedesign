@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from .emails import send_supervisor_notification
 from .forms import (
     DirectorDefaultsForm,
     DirectorPeriodEntryForm,
@@ -762,6 +763,7 @@ def final_report_describe(request, period_id):
             report.generated_at = timezone.now()
             report.save(update_fields=["generated_at", "updated_at"])
             report.submit()
+            send_supervisor_notification(report, request)
             messages.success(request, "Report submitted successfully.")
             return redirect("timeeffort:period_summary", period_id=period_id)
     else:
@@ -839,26 +841,14 @@ def final_report_print(request, report_id):
         return redirect("timeeffort:period_summary", period_id=report.period_id)
 
     lines = report.lines.order_by("sort_order", "activity_name_snapshot").all()
-    direct = [
-        ln
-        for ln in lines
-        if ln.classification_snapshot == Activity.Classification.DIRECT
-    ]
-    indirect = [
-        ln
-        for ln in lines
-        if ln.classification_snapshot == Activity.Classification.INDIRECT
-    ]
-    leave = [
-        ln
-        for ln in lines
-        if ln.classification_snapshot == Activity.Classification.LEAVE
-    ]
-    unallowable = [
-        ln
-        for ln in lines
-        if ln.classification_snapshot == Activity.Classification.UNALLOWABLE
-    ]
+
+    def has_value(ln):
+        return bool(ln.percentage) or bool(ln.total_hours)
+
+    direct = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.DIRECT and has_value(ln)]
+    indirect = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.INDIRECT and has_value(ln)]
+    leave = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.LEAVE and has_value(ln)]
+    unallowable = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.UNALLOWABLE and has_value(ln)]
 
     weekly_data = []
     if report.submission_type == PeriodReport.SubmissionType.HOURS:
@@ -872,11 +862,10 @@ def final_report_print(request, report_id):
         for week in covered_weeks:
             ts = WeeklyTimesheet.objects.filter(staff=report.staff, week=week).first()
             lines_qs = (
-                (
-                    ts.lines.select_related("activity")
-                    .order_by("activity__sort_order", "activity__name")
-                    .all()
-                )
+                [
+                    ln for ln in ts.lines.select_related("activity").order_by("activity__sort_order", "activity__name")
+                    if ln.total_hours > 0
+                ]
                 if ts
                 else []
             )
@@ -1336,6 +1325,7 @@ def director_period_entry(request, period_id):
             )
             if action == "submit":
                 report.submit()
+                send_supervisor_notification(report, request)
                 messages.success(
                     request,
                     f"Effort report for {period.salary_month_label} submitted.",
@@ -1674,26 +1664,14 @@ def supervisor_review(request, report_id):
                 return redirect("timeeffort:supervisor_queue")
 
     lines = report.lines.order_by("sort_order", "activity_name_snapshot").all()
-    direct = [
-        ln
-        for ln in lines
-        if ln.classification_snapshot == Activity.Classification.DIRECT
-    ]
-    indirect = [
-        ln
-        for ln in lines
-        if ln.classification_snapshot == Activity.Classification.INDIRECT
-    ]
-    leave = [
-        ln
-        for ln in lines
-        if ln.classification_snapshot == Activity.Classification.LEAVE
-    ]
-    unallowable = [
-        ln
-        for ln in lines
-        if ln.classification_snapshot == Activity.Classification.UNALLOWABLE
-    ]
+
+    def has_value(ln):
+        return bool(ln.percentage) or bool(ln.total_hours)
+
+    direct = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.DIRECT and has_value(ln)]
+    indirect = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.INDIRECT and has_value(ln)]
+    leave = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.LEAVE and has_value(ln)]
+    unallowable = [ln for ln in lines if ln.classification_snapshot == Activity.Classification.UNALLOWABLE and has_value(ln)]
 
     weekly_data = []
     if report.submission_type == PeriodReport.SubmissionType.HOURS:
@@ -1704,11 +1682,10 @@ def supervisor_review(request, report_id):
         for week in covered_weeks:
             ts = WeeklyTimesheet.objects.filter(staff=report.staff, week=week).first()
             lines_qs = (
-                (
-                    ts.lines.select_related("activity")
-                    .order_by("activity__sort_order", "activity__name")
-                    .all()
-                )
+                [
+                    ln for ln in ts.lines.select_related("activity").order_by("activity__sort_order", "activity__name")
+                    if ln.total_hours > 0
+                ]
                 if ts
                 else []
             )
