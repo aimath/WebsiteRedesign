@@ -1,0 +1,11 @@
+Hi {{ supervisor_name }},
+
+{{ employee_name }} has submitted their Time & Effort Report for {{ period_label }} and it is ready for your review.
+
+Please log in to approve or return the report:
+
+{{ review_url }}
+
+If you have any questions, reply to this email.
+
+— AIM Staff Portal

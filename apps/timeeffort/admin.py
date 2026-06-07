@@ -62,7 +62,8 @@ class StaffTimesheetProfileAdmin(admin.ModelAdmin):
     ]
     list_filter = ["staff_type", "is_active"]
     search_fields = ["user__first_name", "user__last_name", "user__email"]
-    raw_id_fields = ["user", "supervisor"]
+    raw_id_fields = ["user"]
+    autocomplete_fields = ["supervisor"]
 
 
 # =============================================================================
