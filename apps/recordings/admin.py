@@ -14,7 +14,7 @@ class RecordingInline(admin.TabularInline):
 
 @admin.register(VideoProgram)
 class VideoProgramAdmin(admin.ModelAdmin):
-    list_display = ["title", "program_type", "start_date", "source_program", "recording_count"]
+    list_display = ["title", "program_type", "start_date", "vimeo_showcase_url", "recording_count"]
     list_filter = ["program_type", "start_date"]
     search_fields = ["title", "description"]
     prepopulated_fields = {"slug": ("title",)}
@@ -23,15 +23,23 @@ class VideoProgramAdmin(admin.ModelAdmin):
     inlines = [RecordingInline]
 
     fieldsets = (
-        (None, {
-            "fields": ("source_program",),
+        ("Source", {
             "description": (
-                "Optional: link to an existing workshop/program record. "
-                "Selecting one pre-fills the title and date below."
+                "Select an existing workshop to auto-fill title, date, and description. "
+                "For non-workshop programs, leave blank and fill the fields below manually."
             ),
+            "fields": ("source_program", "program_type"),
         }),
-        ("Program details", {
-            "fields": ("title", "program_type", "start_date", "slug", "description"),
+        ("Details (auto-filled from workshop if left blank)", {
+            "fields": ("title", "start_date", "slug", "description"),
+        }),
+        ("Past workshop — Vimeo showcase", {
+            "description": (
+                "For past workshops: paste the Vimeo showcase URL here. "
+                "The list page will link directly to Vimeo. "
+                "Leave blank and add recordings below for individually catalogued talks."
+            ),
+            "fields": ("vimeo_showcase_url",),
         }),
     )
 

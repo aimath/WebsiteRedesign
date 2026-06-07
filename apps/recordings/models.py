@@ -11,26 +11,32 @@ class VideoProgram(models.Model):
         PUBLIC_LECTURE = "lecture", "Public Lecture"
         EVENT = "event", "Event"
 
-    # Optional link back to the canonical Program record. When set, the admin
-    # uses it to pre-fill title/start_date. Fields remain editable so this model
-    # stays self-contained if the source program is later deleted or renamed.
     source_program = models.ForeignKey(
         "programs.Workshop",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
         related_name="video_programs",
-        help_text="Link to the source workshop. Used to pre-fill title and date.",
+        help_text="Link to an existing workshop. Title, date, and description will be copied from it automatically.",
     )
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=255, blank=True)
     program_type = models.CharField(
         max_length=20,
         choices=ProgramType.choices,
+        default=ProgramType.WORKSHOP,
         db_index=True,
     )
     description = models.TextField(blank=True)
-    start_date = models.DateField()
+    start_date = models.DateField(null=True, blank=True)
     slug = models.SlugField(unique=True, blank=True)
+
+    # For past workshops: paste the Vimeo showcase/album URL.
+    # When set and no individual recordings exist, the list links directly here.
+    vimeo_showcase_url = models.URLField(
+        blank=True,
+        help_text="Vimeo showcase or album URL for the full workshop (e.g. https://vimeo.com/showcase/XXXXXXX). "
+                  "Use this for past workshops instead of adding individual recordings.",
+    )
 
     class Meta:
         ordering = ["-start_date"]
@@ -38,10 +44,19 @@ class VideoProgram(models.Model):
         verbose_name_plural = "Video Programs"
 
     def __str__(self):
-        return self.title
+        return self.title or str(self.source_program) or f"VideoProgram {self.pk}"
 
     def save(self, *args, **kwargs):
-        if not self.slug:
+        if self.source_program:
+            if not self.title:
+                self.title = self.source_program.title
+            if not self.start_date:
+                self.start_date = self.source_program.start_date
+            if not self.description and self.source_program.description:
+                self.description = self.source_program.description
+            self.program_type = self.ProgramType.WORKSHOP
+
+        if not self.slug and self.title:
             base = slugify(self.title)[:50]
             slug = base
             n = 1
@@ -49,10 +64,20 @@ class VideoProgram(models.Model):
                 slug = f"{base}-{n}"
                 n += 1
             self.slug = slug
+
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
         return reverse("recordings:program-detail", kwargs={"slug": self.slug})
+
+    @property
+    def has_recordings(self):
+        return self.recordings.exists()
+
+    @property
+    def vimeo_link(self):
+        """The primary Vimeo destination: showcase URL if set, else None (use detail page)."""
+        return self.vimeo_showcase_url or None
 
 
 class Recording(models.Model):

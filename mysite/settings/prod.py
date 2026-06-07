@@ -90,7 +90,6 @@ SECURE_CSP = {
         CSP.SELF,
         CSP.UNSAFE_INLINE,
         "https://cdn.jsdelivr.net",
-        "https://cdnjs.cloudflare.com",
         "https://dk87yvhh7cphv.cloudfront.net",
     ],
     # Styles: self + Google Fonts + Bootstrap CDN
@@ -100,11 +99,9 @@ SECURE_CSP = {
         CSP.UNSAFE_INLINE,
         "https://fonts.googleapis.com",
         "https://cdn.jsdelivr.net",
-        "https://cdnjs.cloudflare.com",
         "https://dk87yvhh7cphv.cloudfront.net",
     ],
-    # Fonts: self + Google Fonts file server
-    "font-src": [CSP.SELF, "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://dk87yvhh7cphv.cloudfront.net"],
+    "font-src": [CSP.SELF, "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "https://dk87yvhh7cphv.cloudfront.net"],
     # Images: self + data URIs (Bootstrap icons, CMS image widgets)
     "img-src": [CSP.SELF, "data:", "https:"],
     # Iframes from YouTube (djangocms-video embeds) and Google Maps embeds
@@ -114,6 +111,7 @@ SECURE_CSP = {
         "http://www.youtube.com",
         "https://www.youtube-nocookie.com",
         "https://www.google.com",
+        "https://player.vimeo.com",
     ],
     # Connect (fetch/XHR): self + ORCID for OAuth
     "connect-src": [CSP.SELF, "https://orcid.org", "https://cdn.jsdelivr.net"],

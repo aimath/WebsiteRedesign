@@ -31,28 +31,54 @@
     {% if programs %}
       <div class="row g-3">
         {% for program in programs %}
-          <div class="col-12">
-            <a href="{{ program.get_absolute_url }}"
-               class="program-card d-block text-decoration-none p-3">
-              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                <div>
-                  <span class="program-type">{{ program.get_program_type_display }}</span>
-                  <div class="program-title mt-1">{{ program.title }}</div>
-                  <div class="program-dates mt-1">
-                    <time datetime="{{ program.start_date|date:'Y-m-d' }}">
-                      {{ program.start_date|date:"N j, Y" }}
-                    </time>
+          {% if program.vimeo_showcase_url %}
+            {# Past workshop — link directly to Vimeo #}
+            <div class="col-12">
+              <a href="{{ program.vimeo_showcase_url }}"
+                 target="_blank"
+                 rel="noopener"
+                 class="program-card d-block text-decoration-none p-3">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                  <div>
+                    <span class="program-type">{{ program.get_program_type_display }}</span>
+                    <div class="program-title mt-1">{{ program.title }}</div>
+                    {% if program.start_date %}
+                      <div class="program-dates mt-1">
+                        <time datetime="{{ program.start_date|date:'Y-m-d' }}">{{ program.start_date|date:"N j, Y" }}</time>
+                      </div>
+                    {% endif %}
                   </div>
+                  <span class="badge bg-secondary" style="font-size:0.75rem;white-space:nowrap;">
+                    Watch on Vimeo ↗
+                  </span>
                 </div>
-                <span class="badge bg-secondary" style="font-size:0.75rem;white-space:nowrap;">
-                  {{ program.recording_count }} recording{{ program.recording_count|pluralize }}
-                </span>
-              </div>
-              {% if program.description %}
-                <p class="mb-0 mt-2 small text-muted">{{ program.description|truncatechars:180 }}</p>
-              {% endif %}
-            </a>
-          </div>
+              </a>
+            </div>
+          {% else %}
+            {# New-style program — link to detail page with individual recordings #}
+            <div class="col-12">
+              <a href="{{ program.get_absolute_url }}"
+                 class="program-card d-block text-decoration-none p-3">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                  <div>
+                    <span class="program-type">{{ program.get_program_type_display }}</span>
+                    <div class="program-title mt-1">{{ program.title }}</div>
+                    {% if program.start_date %}
+                      <div class="program-dates mt-1">
+                        <time datetime="{{ program.start_date|date:'Y-m-d' }}">{{ program.start_date|date:"N j, Y" }}</time>
+                      </div>
+                    {% endif %}
+                  </div>
+                  <span class="badge bg-secondary" style="font-size:0.75rem;white-space:nowrap;">
+                    {{ program.recording_count }} recording{{ program.recording_count|pluralize }}
+                  </span>
+                </div>
+                {% if program.description %}
+                  <p class="mb-0 mt-2 small text-muted">{{ program.description|truncatechars:180 }}</p>
+                {% endif %}
+              </a>
+            </div>
+          {% endif %}
         {% endfor %}
       </div>
 
@@ -62,16 +88,12 @@
           <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
               <li class="page-item">
-                <a class="page-link" href="?{% if active_type %}type={{ active_type }}&{% endif %}page={{ page_obj.previous_page_number }}">
-                  &laquo; Previous
-                </a>
+                <a class="page-link" href="?{% if active_type %}type={{ active_type }}&{% endif %}page={{ page_obj.previous_page_number }}">&laquo; Previous</a>
               </li>
             {% endif %}
             {% for num in page_obj.paginator.page_range %}
               {% if page_obj.number == num %}
-                <li class="page-item active" aria-current="page">
-                  <span class="page-link">{{ num }}</span>
-                </li>
+                <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
               {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
                 <li class="page-item">
                   <a class="page-link" href="?{% if active_type %}type={{ active_type }}&{% endif %}page={{ num }}">{{ num }}</a>
@@ -80,9 +102,7 @@
             {% endfor %}
             {% if page_obj.has_next %}
               <li class="page-item">
-                <a class="page-link" href="?{% if active_type %}type={{ active_type }}&{% endif %}page={{ page_obj.next_page_number }}">
-                  Next &raquo;
-                </a>
+                <a class="page-link" href="?{% if active_type %}type={{ active_type }}&{% endif %}page={{ page_obj.next_page_number }}">Next &raquo;</a>
               </li>
             {% endif %}
           </ul>
